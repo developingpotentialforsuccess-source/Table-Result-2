@@ -1,0 +1,79 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write for now as requested by user
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return true; // Bypassed
+    }
+
+    function isOwner(userId) {
+      return true; // Bypassed
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation for Level
+    function isValidLevel(data) {
+      return data.keys().hasAll(['name', 'subjects']) 
+        && data.name is string && data.name.size() <= 100
+        && data.subjects is list && data.subjects.size() <= 100;
+    }
+
+    // Validation for ClassRecord
+    function isValidClassRecord(data) {
+      return data.keys().hasAll(['termName', 'className', 'teacherName', 'levelId'])
+        && data.termName is string && data.termName.size() <= 100
+        && data.className is string && data.className.size() <= 100
+        && data.teacherName is string && data.teacherName.size() <= 100
+        && data.levelId is string && data.levelId.size() <= 128;
+    }
+
+    match /users/{userId} {
+      match /levels/{levelId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) 
+          && isValidId(levelId)
+          && isValidLevel(incoming());
+        allow update: if isOwner(userId)
+          && isValidId(levelId)
+          && isValidLevel(incoming());
+        allow delete: if isOwner(userId)
+          && isValidId(levelId);
+      }
+
+      match /classes/{classId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidId(classId)
+          && isValidClassRecord(incoming());
+        allow update: if isOwner(userId)
+          && isValidId(classId)
+          && isValidClassRecord(incoming());
+        allow delete: if isOwner(userId)
+          && isValidId(classId);
+      }
+    }
+
+    match /templates/{templateId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.authorId;
+    }
+  }
+}
