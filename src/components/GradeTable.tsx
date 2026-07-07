@@ -493,10 +493,21 @@ export default function GradeTable({
       // Normal flow: show categories and exams based on mode
       const visibleCategoriesForSubject = subject.categories.filter((category) => {
         if (resultMode === 'full') {
+          if ((category.weight || 0) === 0 && ((category.midtermWeight && category.midtermWeight > 0) || (category.finalWeight && category.finalWeight > 0))) {
+            return false;
+          }
           return true;
         } else if (resultMode === 'midterm') {
+          if (isMidtermCategory(category.name)) {
+            const hasOtherMidtermCats = subject.categories.some(c => !isMidtermCategory(c.name) && c.midtermWeight !== undefined && c.midtermWeight > 0);
+            if (hasOtherMidtermCats) return false;
+          }
           return (category.midtermWeight !== undefined && category.midtermWeight > 0);
         } else if (resultMode === 'final') {
+          if (isFinalCategory(category.name)) {
+            const hasOtherFinalCats = subject.categories.some(c => !isFinalCategory(c.name) && c.finalWeight !== undefined && c.finalWeight > 0);
+            if (hasOtherFinalCats) return false;
+          }
           return (category.finalWeight !== undefined && category.finalWeight > 0);
         }
         return true;

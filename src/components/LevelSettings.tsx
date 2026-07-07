@@ -553,7 +553,7 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                               {isLocked && (
                                 <button
                                   onClick={() => {
-                                    const catName = prompt("Enter sub-category name:");
+                                    const catName = prompt(`Enter sub-category name for ${isMid ? 'Midterm' : 'Final'}:`);
                                     if (catName) {
                                       const newCat: Category = {
                                         id: Math.random().toString(36).substr(2, 9),
@@ -561,8 +561,8 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                                         weight: 0,
                                         itemCount: 1,
                                         itemMaxScores: [100],
-                                        ...(isMid ? { midtermWeight: 0 } : {}),
-                                        ...(isFin ? { finalWeight: 0 } : {}),
+                                        ...(isMid ? { midtermWeight: 100 } : {}),
+                                        ...(isFin ? { finalWeight: 100 } : {}),
                                       };
                                       const updatedSubjects = level.subjects.map(s => {
                                         if (s.id !== subject.id) return s;
