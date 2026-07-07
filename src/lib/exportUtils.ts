@@ -178,15 +178,7 @@ export function exportToPDF(currentRecord: ClassRecord, currentLevel: Level, res
 }
 
 export function generateExportData(currentRecord: ClassRecord, currentLevel: Level, resultMode: 'full' | 'midterm' | 'final', students?: Student[], detailMode: 'subjects' | 'categories' | 'both' = 'subjects') {
-  const isMidtermCategory = (name: string) => {
-    const n = name.toUpperCase();
-    return n.includes("MID-TERM") || n.includes("MID TERM") || n.includes("MIDTERM") || n.includes("MID EXAM") || n.includes("MID TEST");
-  };
 
-  const isFinalCategory = (name: string) => {
-    const n = name.toUpperCase();
-    return n.includes("FINAL");
-  };
 
   const activeStudents = (students?.length ? students : (currentRecord.students || [])).filter(s => !s.isHidden);
 

@@ -1220,8 +1220,8 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
 
                 {/* Hide / Unhide Style */}
                 <section>
-                  <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Hide / Unhide Style</label>
-                  <p className="text-xs text-slate-500 mb-3">Choose which information columns to show inside each category group.</p>
+                  <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Regular Category Columns (Quiz, Homework, etc.)</label>
+                  <p className="text-xs text-slate-500 mb-3">Choose which information columns to show inside each regular category group.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <label className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer">
                       <div>
@@ -1274,6 +1274,38 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                         className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                       />
                     </label>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Exam Columns in "Termly Result" Mode</label>
+                    <p className="text-xs text-slate-500 mb-3">Choose which exam columns (Midterm & Final) to display when viewing the Termly Result.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer">
+                        <div>
+                          <span className="block text-sm font-bold text-slate-900">Show Exam AVG (%)</span>
+                          <span className="block text-[10px] text-slate-500">Raw average for Midterm/Final</span>
+                        </div>
+                        <input 
+                          type="checkbox" 
+                          checked={settings.showExamAvgColumnsFullMode !== false}
+                          onChange={(e) => onUpdateSettings({ ...settings, showExamAvgColumnsFullMode: e.target.checked })}
+                          className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer">
+                        <div>
+                          <span className="block text-sm font-bold text-slate-900">Show Exam WTD (%)</span>
+                          <span className="block text-[10px] text-slate-500">Weighted result for Midterm/Final</span>
+                        </div>
+                        <input 
+                          type="checkbox" 
+                          checked={settings.showExamWtdColumnsFullMode !== false}
+                          onChange={(e) => onUpdateSettings({ ...settings, showExamWtdColumnsFullMode: e.target.checked })}
+                          className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </label>
+                    </div>
                   </div>
 
                   <div className="mt-4 p-4 rounded-xl bg-blue-50/50 border border-blue-100 space-y-3">

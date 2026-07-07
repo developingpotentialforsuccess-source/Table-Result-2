@@ -9,6 +9,7 @@ import {
   TeacherSettings,
   MANUAL_COLORS,
 } from "../types";
+import { isMidtermCategory, isFinalCategory } from "../lib/categoryUtils";
 import { calculateAttendancePercentage } from "../lib/attendanceUtils";
 import { Trash2, ArrowUpDown, EyeOff, Eye, SlidersHorizontal, ClipboardPaste, Wand2, Search, X, ChevronDown, ChevronUp, BarChart3, Award, CheckCircle2, AlertTriangle, BookOpen, Calendar, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -56,15 +57,7 @@ interface Props {
   settings?: TeacherSettings;
 }
 
-const isMidtermCategory = (name: string) => {
-  const n = name.toUpperCase();
-  return n.includes("MID-TERM") || n.includes("MID TERM") || n.includes("MIDTERM") || n.includes("MID EXAM") || n.includes("MID TEST");
-};
 
-const isFinalCategory = (name: string) => {
-  const n = name.toUpperCase();
-  return n.includes("FINAL");
-};
 
 const getColorByIndex = (index: number, density: 'light' | 'medium' | 'dark' = 'medium') => {
   const opacities = {
@@ -498,14 +491,14 @@ export default function GradeTable({
           }
           return true;
         } else if (resultMode === 'midterm') {
-          if (isMidtermCategory(category.name)) {
-            const hasOtherMidtermCats = subject.categories.some(c => !isMidtermCategory(c.name) && c.midtermWeight !== undefined && c.midtermWeight > 0);
+          if (isMidtermCategory(category)) {
+            const hasOtherMidtermCats = subject.categories.some(c => !isMidtermCategory(c) && c.midtermWeight !== undefined && c.midtermWeight > 0);
             if (hasOtherMidtermCats) return false;
           }
           return (category.midtermWeight !== undefined && category.midtermWeight > 0);
         } else if (resultMode === 'final') {
-          if (isFinalCategory(category.name)) {
-            const hasOtherFinalCats = subject.categories.some(c => !isFinalCategory(c.name) && c.finalWeight !== undefined && c.finalWeight > 0);
+          if (isFinalCategory(category)) {
+            const hasOtherFinalCats = subject.categories.some(c => !isFinalCategory(c) && c.finalWeight !== undefined && c.finalWeight > 0);
             if (hasOtherFinalCats) return false;
           }
           return (category.finalWeight !== undefined && category.finalWeight > 0);
@@ -515,16 +508,20 @@ export default function GradeTable({
 
       if (visibleCategoriesForSubject.length > 0) {
         visibleCategoriesForSubject.forEach((category) => {
-          const isMid = isMidtermCategory(category.name);
-          const isFin = isFinalCategory(category.name);
+          const isMid = isMidtermCategory(category);
+          const isFin = isFinalCategory(category);
           const theme = getTheme(subjectIndex, category.name, settings);
           const isCatHidden = hiddenCategories.includes(category.id);
           
           let catSpan = 0;
 
+          const isExamInFullMode = resultMode === 'full' && (isMid || isFin);
+          const effectiveShowAvg = isExamInFullMode ? (settings.showExamAvgColumnsFullMode !== false) : settings.showAvgColumns;
+          const effectiveShowWtd = isExamInFullMode ? (settings.showExamWtdColumnsFullMode !== false) : settings.showWtdColumns;
+
           if (isCatHidden) {
-            const keepAvg = settings?.keepAvgOnHide && settings?.showAvgColumns && category.itemCount > 1;
-            const keepWtd = settings?.keepWtdOnHide && settings?.showWtdColumns;
+            const keepAvg = settings?.keepAvgOnHide && effectiveShowAvg && (category.itemCount > 1 || isExamInFullMode);
+            const keepWtd = settings?.keepWtdOnHide && effectiveShowWtd;
 
             if (keepAvg) {
               itemCols.push({
@@ -591,7 +588,7 @@ export default function GradeTable({
               }
             }
             
-            if (settings.showAvgColumns && category.itemCount > 1) {
+            if (effectiveShowAvg && (category.itemCount > 1 || isExamInFullMode)) {
               itemCols.push({
                 categoryId: category.id,
                 subjectId: subject.id,
@@ -606,7 +603,7 @@ export default function GradeTable({
               catSpan++;
             }
 
-            if (settings.showWtdColumns) {
+            if (effectiveShowWtd) {
               itemCols.push({
                 categoryId: category.id,
                 subjectId: subject.id,
@@ -652,15 +649,15 @@ export default function GradeTable({
       }
 
       // Add Exam Columns (Only if no matching category exists in the subject)
-      const hasMidtermCat = subject.categories.some(c => isMidtermCategory(c.name));
-      const hasFinalCat = subject.categories.some(c => isFinalCategory(c.name));
+      const hasMidtermCat = subject.categories.some(c => isMidtermCategory(c));
+      const hasFinalCat = subject.categories.some(c => isFinalCategory(c));
 
       if (!hasMidtermCat) {
         const midWeight = subject.fullModeMidtermWeight ?? 0;
         if (midWeight > 0) {
           const examTheme = getTheme(subjectIndex, "Midterm", settings);
           categoryCols.push({
-            category: { id: `exam_midterm_cat_${subject.id}`, name: "MID EXAM", weight: midWeight },
+            category: { id: `exam_midterm_cat_${subject.id}`, name: "MID-TERM TEST", weight: midWeight },
             colSpan: 1,
             subjectId: subject.id,
             subjectIndex,
@@ -686,7 +683,7 @@ export default function GradeTable({
         if (finalWeight > 0) {
           const examTheme = getTheme(subjectIndex, "Final", settings);
           categoryCols.push({
-            category: { id: `exam_final_cat_${subject.id}`, name: "FINAL EXAM", weight: finalWeight },
+            category: { id: `exam_final_cat_${subject.id}`, name: "FINAL TEST", weight: finalWeight },
             colSpan: 1,
             subjectId: subject.id,
             subjectIndex,
@@ -814,15 +811,7 @@ export default function GradeTable({
 
   // Pre-calculate final scores and ranks
   const studentMetrics = useMemo(() => {
-    const isMidtermCategory = (name: string) => {
-      const n = name.toUpperCase();
-      return n.includes("MID-TERM") || n.includes("MID TERM") || n.includes("MIDTERM") || n.includes("MID EXAM") || n.includes("MID TEST");
-    };
 
-    const isFinalCategory = (name: string) => {
-      const n = name.toUpperCase();
-      return n.includes("FINAL");
-    };
 
     const scores = students.map((student) => {
       const categoryAvgs: Record<string, number> = {};
@@ -943,10 +932,10 @@ export default function GradeTable({
         // If the subject has matching categories for midterm/final, update their averages to the resolved mid/final results
         if (resultMode === 'full') {
           subject.categories.forEach(cat => {
-            if (isMidtermCategory(cat.name)) {
+            if (isMidtermCategory(cat)) {
               categoryAvgs[cat.id] = midResult;
               categoryAvgs[`${cat.id}_weighted`] = (midResult / 100) * cat.weight;
-            } else if (isFinalCategory(cat.name)) {
+            } else if (isFinalCategory(cat)) {
               categoryAvgs[cat.id] = finalResult;
               categoryAvgs[`${cat.id}_weighted`] = (finalResult / 100) * cat.weight;
             }
@@ -1416,13 +1405,8 @@ export default function GradeTable({
                               return (
                                 <>
                                   <span className={`truncate max-w-[150px] ${hasKeptCols ? "text-slate-600 font-medium italic" : ""}`}>
-                                    {(() => {
-                                      const isMidOrFinHeader = (resultMode === 'midterm' && isMidtermCategory(cc.category.name)) || 
-                                                               (resultMode === 'final' && isFinalCategory(cc.category.name));
-                                      if (isMidOrFinHeader) return ""; 
-                                      return cc.category.name;
-                                    })()}
-                                    {settings?.showCategoryWeight !== false && cc.category.name !== "RESULT" && !((resultMode === 'midterm' && isMidtermCategory(cc.category.name)) || (resultMode === 'final' && isFinalCategory(cc.category.name))) && ` (${cc.category.weight}%)`}
+                                    {cc.category.name}
+                                    {settings?.showCategoryWeight !== false && cc.category.name !== "RESULT" && !((resultMode === 'midterm' && isMidtermCategory(cc.category)) || (resultMode === 'final' && isFinalCategory(cc.category))) && ` (${cc.category.weight}%)`}
                                   </span>
                                   {settings?.showCategoryHideIcon !== false && (
                                     <button
@@ -1440,40 +1424,9 @@ export default function GradeTable({
                                   {(() => {
                                     const isMidCol = resultMode === 'full' && cc.category.id.startsWith('exam_midterm_cat_');
                                     const isFinCol = resultMode === 'full' && cc.category.id.startsWith('exam_final_cat_');
-                                    const isMidCat = isMidtermCategory(cc.category.name);
-                                    const isFinCat = isFinalCategory(cc.category.name);
+                                    const isMidCat = isMidtermCategory(cc.category);
+                                    const isFinCat = isFinalCategory(cc.category);
                                     
-                                    if (isMidCol || isFinCol || isMidCat || isFinCat) {
-                                      return (
-                                        <button
-                                          onClick={() => {
-                                            const rawName = prompt("Enter sub-category name:");
-                                            if (rawName) {
-                                              const catName = (isMidCol || isMidCat) && !isMidtermCategory(rawName) ? `${rawName} MIDTERM` : 
-                                                              (isFinCol || isFinCat) && !isFinalCategory(rawName) ? `${rawName} FINAL` : rawName;
-                                              const newCat = {
-                                                id: Math.random().toString(36).substr(2, 9),
-                                                name: catName,
-                                                weight: 0,
-                                                itemCount: 1,
-                                                itemMaxScores: [100],
-                                                ...(isMidCol || isMidCat ? { midtermWeight: 0 } : {}),
-                                                ...(isFinCol || isFinCat ? { finalWeight: 0 } : {}),
-                                              };
-                                              const updatedSubjects = level.subjects.map(s => {
-                                                if (s.id !== cc.subjectId) return s;
-                                                return { ...s, categories: [...s.categories, newCat] };
-                                              });
-                                              if (onUpdateLevel) onUpdateLevel({ ...level, subjects: updatedSubjects });
-                                            }
-                                          }}
-                                          className="p-1 hover:bg-black/10 rounded transition-colors ml-1"
-                                          title="Add sub-category"
-                                        >
-                                          <Plus className="w-3.5 h-3.5 text-blue-600" />
-                                        </button>
-                                      );
-                                    }
                                     return null;
                                   })()}
                                 </>

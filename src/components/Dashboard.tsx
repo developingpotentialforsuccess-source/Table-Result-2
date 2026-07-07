@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import { Users } from 'lucide-react';
 import { Student, ClassRecord, Level, calculateGrade } from '../types';
+import { isMidtermCategory, isFinalCategory } from "../lib/categoryUtils";
 
 interface DashboardProps {
   currentRecord: ClassRecord;
@@ -27,15 +28,7 @@ const DEFAULT_GRADING_SCALE = [
   { grade: 'F', minScore: 0 },
 ];
 
-const isMidtermCategory = (name: string) => {
-  const n = name.toUpperCase();
-  return n.includes("MID-TERM") || n.includes("MID TERM") || n.includes("MIDTERM") || n.includes("MID EXAM") || n.includes("MID TEST");
-};
 
-const isFinalCategory = (name: string) => {
-  const n = name.toUpperCase();
-  return n.includes("FINAL");
-};
 
 export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, currentLevel, resultMode }) => {
   const stats = useMemo(() => {
@@ -50,15 +43,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
     activeStudents.forEach((student, studentIndex) => {
       let performancePct = 0;
 
-      const isMidtermCategory = (name: string) => {
-        const n = name.toUpperCase();
-        return n.includes("MID-TERM") || n.includes("MID TERM") || n.includes("MIDTERM") || n.includes("MID EXAM") || n.includes("MID TEST");
-      };
 
-      const isFinalCategory = (name: string) => {
-        const n = name.toUpperCase();
-        return n.includes("FINAL");
-      };
 
       const calculateModePct = (subject: any, mode: 'midterm' | 'final' | 'full') => {
         let points = 0;
@@ -66,8 +51,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
         let hasAnyScore = false;
 
         subject.categories.forEach((cat: any) => {
-          if (mode === 'midterm' && isFinalCategory(cat.name)) return;
-          if (mode === 'final' && isMidtermCategory(cat.name)) return;
+          if (mode === 'midterm' && isFinalCategory(cat)) return;
+          if (mode === 'final' && isMidtermCategory(cat)) return;
 
           let catEarned = 0;
           let catMax = 0;
@@ -137,7 +122,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
         if (resultMode === 'midterm') {
           subjectPercentage = midResult;
           hasSubjectScore = hasMidScore || subject.categories.some((cat: any) => {
-            if (isFinalCategory(cat.name)) return false;
+            if (isFinalCategory(cat)) return false;
             for (let i = 0; i < cat.itemCount; i++) {
               if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
             }
@@ -146,7 +131,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
         } else if (resultMode === 'final') {
           subjectPercentage = finalResult;
           hasSubjectScore = hasFinalScore || subject.categories.some((cat: any) => {
-            if (isMidtermCategory(cat.name)) return false;
+            if (isMidtermCategory(cat)) return false;
             for (let i = 0; i < cat.itemCount; i++) {
               if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
             }

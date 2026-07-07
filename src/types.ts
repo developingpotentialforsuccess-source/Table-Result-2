@@ -11,6 +11,8 @@ export interface Category {
   finalWeight?: number; // weight for final mode
   fullTermMidtermWeight?: number;
   fullTermFinalWeight?: number;
+  isMidterm?: boolean; // explicitly marks category as the Mid-Term exam
+  isFinal?: boolean; // explicitly marks category as the Final exam
 }
 
 export interface Subject {
@@ -72,6 +74,8 @@ export interface TeacherSettings {
   showScoreColumns: boolean;
   showAvgColumns: boolean;
   showWtdColumns: boolean;
+  showExamAvgColumnsFullMode?: boolean;
+  showExamWtdColumnsFullMode?: boolean;
   autoBackup?: boolean;
   scoreColor?: 'black' | 'red' | 'blue' | 'green' | 'purple';
   gradingScale?: GradingScale[];

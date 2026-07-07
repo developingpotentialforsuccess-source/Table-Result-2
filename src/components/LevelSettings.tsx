@@ -1,16 +1,9 @@
 import React, { useState } from 'react';
 import { Level, Subject, Category, getLevelTotalWeight, getSubjectWeight } from '../types';
+import { isMidtermCategory, isFinalCategory } from "../lib/categoryUtils";
 import { X, Plus, Trash2, ChevronDown, ChevronRight, Edit2, Lock, GraduationCap, Check } from 'lucide-react';
 
-const isMidtermCategoryName = (name: string) => {
-  const n = name.toUpperCase();
-  return n.includes("MID-TERM") || n.includes("MID TERM") || n.includes("MIDTERM") || n.includes("MID EXAM") || n.includes("MID TEST");
-};
 
-const isFinalCategoryName = (name: string) => {
-  const n = name.toUpperCase();
-  return n.includes("FINAL");
-};
 
 interface Props {
   level: Level;
@@ -116,14 +109,14 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
         // Auto-sync category weights if fullModeMidtermWeight or fullModeFinalWeight is changed
         if (field === 'fullModeMidtermWeight') {
           updatedSubject.categories = s.categories.map(c => {
-            if (isMidtermCategoryName(c.name)) {
+            if (isMidtermCategory(c.name)) {
               return { ...c, weight: value };
             }
             return c;
           });
         } else if (field === 'fullModeFinalWeight') {
           updatedSubject.categories = s.categories.map(c => {
-            if (isFinalCategoryName(c.name)) {
+            if (isFinalCategory(c.name)) {
               return { ...c, weight: value };
             }
             return c;
@@ -149,9 +142,9 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
     const subject = level.subjects.find(s => s.id === subjectId);
     let finalWeight = Number(newCategoryWeight);
     if (subject) {
-      if (isMidtermCategoryName(newCategoryName) && typeof subject.fullModeMidtermWeight === 'number') {
+      if (isMidtermCategory(newCategoryName) && typeof subject.fullModeMidtermWeight === 'number') {
         finalWeight = subject.fullModeMidtermWeight;
-      } else if (isFinalCategoryName(newCategoryName) && typeof subject.fullModeFinalWeight === 'number') {
+      } else if (isFinalCategory(newCategoryName) && typeof subject.fullModeFinalWeight === 'number') {
         finalWeight = subject.fullModeFinalWeight;
       }
     }
@@ -193,9 +186,9 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
               
               // If name changes, check if it matches midterm/final and auto-assign weight
               if (field === 'name') {
-                if (isMidtermCategoryName(value) && typeof s.fullModeMidtermWeight === 'number') {
+                if (isMidtermCategory(value) && typeof s.fullModeMidtermWeight === 'number') {
                   updatedCategory.weight = s.fullModeMidtermWeight;
-                } else if (isFinalCategoryName(value) && typeof s.fullModeFinalWeight === 'number') {
+                } else if (isFinalCategory(value) && typeof s.fullModeFinalWeight === 'number') {
                   updatedCategory.weight = s.fullModeFinalWeight;
                 }
               }
@@ -444,8 +437,8 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                   {subject.categories.length > 0 ? (
                     <div className="space-y-2">
                       {subject.categories.map(category => {
-                        const isMid = isMidtermCategoryName(category.name) && typeof subject.fullModeMidtermWeight === 'number';
-                        const isFin = isFinalCategoryName(category.name) && typeof subject.fullModeFinalWeight === 'number';
+                        const isMid = isMidtermCategory(category) && typeof subject.fullModeMidtermWeight === 'number';
+                        const isFin = isFinalCategory(category) && typeof subject.fullModeFinalWeight === 'number';
                         const isLocked = isMid || isFin;
 
                         let borderClass = "border-slate-100 bg-slate-50";
@@ -466,6 +459,26 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                                 placeholder="Category (e.g., Quizzes)"
                                 disabled={isLocked}
                               />
+                              <div className="flex items-center gap-3 mt-1.5 px-1">
+                                <label className="text-[10px] text-slate-500 flex items-center gap-1 cursor-pointer font-medium hover:text-slate-700">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!category.isMidterm} 
+                                    onChange={(e) => handleUpdateCategory(subject.id, category.id, 'isMidterm', e.target.checked)} 
+                                    className="rounded border-slate-300 w-3 h-3 text-blue-600 focus:ring-blue-500" 
+                                  />
+                                  Is Mid-Term Exam
+                                </label>
+                                <label className="text-[10px] text-slate-500 flex items-center gap-1 cursor-pointer font-medium hover:text-slate-700">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!category.isFinal} 
+                                    onChange={(e) => handleUpdateCategory(subject.id, category.id, 'isFinal', e.target.checked)} 
+                                    className="rounded border-slate-300 w-3 h-3 text-purple-600 focus:ring-purple-500" 
+                                  />
+                                  Is Final Exam
+                                </label>
+                              </div>
                             </div>
                             <div className="w-24 relative flex items-center gap-2">
                               <span className="text-xs text-slate-500 w-12">Items:</span>
