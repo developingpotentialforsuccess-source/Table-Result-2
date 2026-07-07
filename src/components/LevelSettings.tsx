@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Level, Subject, Category, getLevelTotalWeight, getSubjectWeight } from '../types';
 import { isMidtermCategory, isFinalCategory } from "../lib/categoryUtils";
-import { X, Plus, Trash2, ChevronDown, ChevronRight, Edit2, Lock, GraduationCap, Check } from 'lucide-react';
+import { X, Plus, Trash2, ChevronDown, ChevronRight, Edit2, Lock, GraduationCap, Check, Sparkles, Loader2 } from 'lucide-react';
 
 
 
@@ -24,6 +24,9 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
   const [newCategoryFinalWeight, setNewCategoryFinalWeight] = useState<string>('');
   const [verificationCode, setVerificationCode] = useState('');
   const [isLocked, setIsLocked] = useState(true);
+  const [showSmartImport, setShowSmartImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
 
   const totalWeight = getLevelTotalWeight(level);
 
@@ -220,6 +223,43 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
     onUpdateLevel({ ...level, subjects: newSubjects });
   };
 
+  const handleSmartImport = async () => {
+    if (!importText.trim()) return;
+    setIsImporting(true);
+    try {
+      const response = await fetch('/api/ai/parse-level', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: importText })
+      });
+      if (!response.ok) throw new Error('Failed to parse config');
+      const parsed = await response.json();
+      
+      const newLevel: Level = {
+        ...level,
+        name: parsed.name || level.name,
+        subjects: (parsed.subjects || []).map((s: any) => ({
+          ...s,
+          id: Math.random().toString(36).substr(2, 9),
+          categories: (s.categories || []).map((c: any) => ({
+            ...c,
+            id: Math.random().toString(36).substr(2, 9),
+            itemCount: c.itemCount || 1,
+            itemMaxScores: Array(c.itemCount || 1).fill(100)
+          }))
+        }))
+      };
+      
+      onUpdateLevel(newLevel);
+      setShowSmartImport(false);
+      setImportText('');
+    } catch (err: any) {
+      alert("Smart Import Error: " + err.message);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]">
       {!hideHeader && (
@@ -236,6 +276,19 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
             <p className="text-sm text-slate-500 px-1 mt-1">Configure subjects, assignments, and test weights for this level.</p>
           </div>
           <div className="flex items-center gap-3">
+            {!isLocked && (
+              <button
+                onClick={() => setShowSmartImport(!showSmartImport)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-xs font-bold uppercase tracking-tight ${
+                  showSmartImport 
+                    ? 'bg-purple-600 text-white border-purple-700 shadow-md' 
+                    : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                Smart Import
+              </button>
+            )}
             {!isLocked && (
               <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
                 <Edit2 className="w-4 h-4 text-emerald-600" />
@@ -256,6 +309,49 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
       )}
       
       <div className="p-5 space-y-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+        {showSmartImport && !isLocked && (
+          <div className="bg-purple-50 border border-purple-200 p-4 rounded-xl mb-4 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                <h4 className="text-sm font-bold text-purple-800 uppercase tracking-tight">Paste Configuration</h4>
+              </div>
+              <button onClick={() => setShowSmartImport(false)} className="text-purple-400 hover:text-purple-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-purple-700 mb-3 leading-relaxed">
+              Paste your level description, subject list, or weight distribution here. 
+              Gemini will automatically structure it into subjects and categories.
+            </p>
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder="Example: Mini test has Speaking, Vocab, Grammar. Final test is 62%..."
+              className="w-full h-32 bg-white border border-purple-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder:text-purple-200"
+            />
+            <div className="flex justify-end mt-3">
+              <button
+                onClick={handleSmartImport}
+                disabled={isImporting || !importText.trim()}
+                className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-purple-700 transition-all disabled:opacity-50 shadow-sm"
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Parsing...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Apply Config
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
         {isLocked && (
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg flex items-start gap-3 mb-4">
             <Lock className="w-5 h-5 text-slate-400 mt-0.5" />

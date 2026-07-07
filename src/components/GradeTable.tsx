@@ -573,11 +573,19 @@ export default function GradeTable({
           } else {
             if (settings.showScoreColumns) {
               for (let i = 0; i < category.itemCount; i++) {
+                let cleanLabel = category.itemNames?.[i] || (category.itemCount === 1 ? (resultMode === 'full' ? "Raw" : category.name) : `Item ${i+1}`);
+                
+                if (resultMode === 'midterm') {
+                  cleanLabel = cleanLabel.replace(/^midterm:?\s*/i, '');
+                } else if (resultMode === 'final') {
+                  cleanLabel = cleanLabel.replace(/^final:?\s*/i, '');
+                }
+
                 itemCols.push({
                   categoryId: category.id,
                   subjectId: subject.id,
                   itemIndex: i,
-                  label: category.itemNames?.[i] || (category.itemCount === 1 ? "Raw" : `Item ${i+1}`),
+                  label: cleanLabel,
                   maxScore: category.itemMaxScores?.[i] ?? 100,
                   subjectIndex,
                   theme,
@@ -1129,14 +1137,14 @@ export default function GradeTable({
           {/* Row 1: Subjects */}
           <tr>
             <th
-              rowSpan={3}
+              rowSpan={resultMode === 'full' ? 3 : 2}
               className={`px-2 py-2 font-bold border-r ${gridStyles.headerBorderClass} w-10 text-center sm:sticky left-0 z-20 sm:${gridStyles.shadowHeader} ${currentPaper.bgClass}`}
               style={{ ...currentPaper.customStyle, left: 0 }}
             >
               No
             </th>
             <th
-              rowSpan={3}
+              rowSpan={resultMode === 'full' ? 3 : 2}
               className={`px-3 py-2 font-black border-r ${gridStyles.headerBorderClass} w-[180px] min-w-[180px] max-w-[180px] sm:sticky left-10 z-20 sm:${gridStyles.shadowHeader} cursor-pointer hover:bg-black/[0.05] transition-colors ${currentPaper.bgClass} uppercase tracking-tight`}
               style={{ ...currentPaper.customStyle, left: "2.5rem" }}
               onClick={() => handleSort("name")}
@@ -1146,14 +1154,14 @@ export default function GradeTable({
               </div>
             </th>
             <th
-              rowSpan={3}
+              rowSpan={resultMode === 'full' ? 3 : 2}
               className={`px-1 py-2 font-bold border-r ${gridStyles.headerBorderClass} text-center w-12 text-[10px]`}
             >
               Sex
             </th>
             {resultMode === 'full' && (
               <th
-                rowSpan={3}
+                rowSpan={resultMode === 'full' ? 3 : 2}
                 className={`px-1 py-2 font-bold border-r ${gridStyles.headerBorderClass} text-center w-16 text-[10px]`}
               >
                 Attnd %
@@ -1171,7 +1179,11 @@ export default function GradeTable({
                 <th
                   key={sc.subject.id}
                   colSpan={sc.colSpan}
-                  rowSpan={sc.isHidden ? 3 : 1}
+                  rowSpan={(() => {
+                    if (sc.isHidden) return (resultMode === 'full' ? 3 : 2);
+                    if (resultMode !== 'full' && sc.colSpan === 1) return 2;
+                    return 1;
+                  })()}
                   className={`px-4 py-2 border-r border-b ${gridStyles.headerBorderClass} ${headerStyleClass} ${sc.isHidden ? "bg-slate-200 border-slate-300 text-slate-500" : `${theme.bg} ${theme.text}`}`}
                 >
                   <div className="flex flex-col items-center justify-center gap-1">
@@ -1323,7 +1335,7 @@ export default function GradeTable({
               );
             })}
             <th
-              rowSpan={3}
+              rowSpan={resultMode === 'full' ? 3 : 2}
               className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center shadow-[-1px_0_0_0_#cbd5e1] cursor-pointer hover:bg-blue-100 transition-colors`}
               onClick={() => handleSort("finalScore")}
             >
@@ -1332,7 +1344,7 @@ export default function GradeTable({
               </div>
             </th>
             <th
-              rowSpan={3}
+              rowSpan={resultMode === 'full' ? 3 : 2}
               className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center cursor-pointer hover:bg-blue-100 transition-colors`}
               onClick={() => handleSort("rank")}
             >
@@ -1341,19 +1353,19 @@ export default function GradeTable({
               </div>
             </th>
             <th
-              rowSpan={3}
+              rowSpan={resultMode === 'full' ? 3 : 2}
               className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center`}
             >
               GRADE
             </th>
             <th
-              rowSpan={3}
+              rowSpan={resultMode === 'full' ? 3 : 2}
               className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center`}
             >
               STATUS
             </th>
             <th
-              rowSpan={3}
+              rowSpan={resultMode === 'full' ? 3 : 2}
               className={`px-4 py-3 font-bold text-center border-l ${gridStyles.headerBorderClass} w-24`}
             >
               Act
@@ -1361,7 +1373,7 @@ export default function GradeTable({
           </tr>
 
           {/* Row 2: Categories */}
-          {(resultMode === 'full' || categoryCols.some(cc => !cc.isHiddenSubject && cc.colSpan > 1)) && (
+          {resultMode === 'full' && (
             <tr>
               {categoryCols.map((cc, i) => {
                   if (cc.isHiddenSubject) return null;
@@ -1406,7 +1418,7 @@ export default function GradeTable({
                                 <>
                                   <span className={`truncate max-w-[150px] ${hasKeptCols ? "text-slate-600 font-medium italic" : ""}`}>
                                     {cc.category.name}
-                                    {settings?.showCategoryWeight !== false && cc.category.name !== "RESULT" && !((resultMode === 'midterm' && isMidtermCategory(cc.category)) || (resultMode === 'final' && isFinalCategory(cc.category))) && ` (${cc.category.weight}%)`}
+                                    {settings?.showCategoryWeight !== false && cc.category.name !== "RESULT" && ` (${cc.category.weight}%)`}
                                   </span>
                                   {settings?.showCategoryHideIcon !== false && (
                                     <button
@@ -1442,33 +1454,45 @@ export default function GradeTable({
           )}
 
           {/* Row 3: Items */}
-          {(resultMode === 'full' || itemCols.some(ic => !ic.isHiddenSubject && ic.itemIndex >= 0)) && (
-            <tr>
-              {itemCols.map((ic, i) => {
-                  if (ic.isHiddenSubject) return null;
-                  const theme = ic.theme;
-                  const isHidden = ic.isHidden;
-                  return (
-                    <th
-                      key={`${ic.categoryId}_${ic.itemIndex}_${i}`}
-                      className={`group px-1 py-1 border-r border-b ${gridStyles.headerBorderClass} ${headerStyleClass} ${isHidden ? "bg-slate-50/50 text-slate-200 w-12" : ic.isAvg ? ((ic.itemIndex === -98 || ic.itemIndex === -99) ? `bg-blue-100 text-blue-900 w-24 ${ic.itemIndex === -98 || (ic.itemIndex === -99 && (settings?.resultDisplayMode === 'wtd' || !settings?.resultDisplayMode)) ? `border-l ${gridStyles.totalBorderClass}` : ''}` : ic.itemIndex === -1 ? `bg-orange-100/${op.avg} text-orange-900 w-20` : ic.itemIndex === -5 || ic.itemIndex === -3 ? `bg-purple-100/${op.avg} text-purple-900 w-20` : `${theme.avgBg} ${theme.text} w-20`) : `${theme.bg} ${theme.text} w-16`} transition-colors`}
-                    >
-                      {(() => {
-                        const subCol = subjectCols.find(sc => sc.subject.id === ic.subjectId);
-                        const isSingleCol = subCol ? subCol.colSpan === 1 : false;
-                        if (resultMode !== 'full' && isSingleCol) return null;
+          {(() => {
+            const hasVisibleItems = resultMode === 'full' || itemCols.some(ic => {
+              if (ic.isHiddenSubject) return false;
+              const subCol = subjectCols.find(sc => sc.subject.id === ic.subjectId);
+              const isSingleCol = subCol ? subCol.colSpan === 1 : false;
+              // If we are here, resultMode is NOT 'full' because of the short-circuit || above
+              return !isSingleCol;
+            });
 
-                        if (isHidden) {
-                          return <span className="text-[10px] italic">Hidden</span>;
-                        }
+            if (!hasVisibleItems) return null;
 
-                        if (ic.isAvg) {
-                          return (
-                            <div className="flex flex-col items-center justify-center h-full">
-                              <span className="font-bold">{ic.label}</span>
-                            </div>
-                          );
-                        }
+            return (
+              <tr>
+                {itemCols.map((ic, i) => {
+                    if (ic.isHiddenSubject) return null;
+                    const subCol = subjectCols.find(sc => sc.subject.id === ic.subjectId);
+                    const isSingleCol = subCol ? subCol.colSpan === 1 : false;
+                    const isFull = resultMode === 'full';
+                    if (!isFull && isSingleCol) return null;
+
+                    const theme = ic.theme;
+                    const isHidden = ic.isHidden;
+                    return (
+                      <th
+                        key={`${ic.categoryId}_${ic.itemIndex}_${i}`}
+                        className={`group px-1 py-1 border-r border-b ${gridStyles.headerBorderClass} ${headerStyleClass} ${isHidden ? "bg-slate-50/50 text-slate-200 w-12" : ic.isAvg ? ((ic.itemIndex === -98 || ic.itemIndex === -99) ? `bg-blue-100 text-blue-900 w-24 ${ic.itemIndex === -98 || (ic.itemIndex === -99 && (settings?.resultDisplayMode === 'wtd' || !settings?.resultDisplayMode)) ? `border-l ${gridStyles.totalBorderClass}` : ''}` : ic.itemIndex === -1 ? `bg-orange-100/${op.avg} text-orange-900 w-20` : ic.itemIndex === -5 || ic.itemIndex === -3 ? `bg-purple-100/${op.avg} text-purple-900 w-20` : `${theme.avgBg} ${theme.text} w-20`) : `${theme.bg} ${theme.text} w-16`} transition-colors`}
+                      >
+                        {(() => {
+                          if (isHidden) {
+                            return <span className="text-[10px] italic">Hidden</span>;
+                          }
+
+                          if (ic.isAvg) {
+                            return (
+                              <div className="flex flex-col items-center justify-center h-full">
+                                <span className="font-bold">{ic.label}</span>
+                              </div>
+                            );
+                          }
 
                         return (
                           <div className="flex flex-col items-center justify-center h-full">
@@ -1517,7 +1541,8 @@ export default function GradeTable({
                   );
                 })}
               </tr>
-          )}
+            );
+          })()}
 
           {/* Closing CategoryCols loop correctly */}
           {(resultMode !== 'full') && (

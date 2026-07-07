@@ -48,6 +48,64 @@ async function startServer() {
     }
   });
 
+  app.post("/api/ai/parse-level", async (req, res) => {
+    try {
+      const { text } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+      });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: `Parse this grading structure text:
+"${text}"
+
+Return a JSON object representing a 'Level'.
+Structure:
+{
+  "name": "Level Name",
+  "subjects": [
+    {
+      "name": "Subject Name",
+      "categories": [
+        {
+          "name": "Category Name",
+          "weight": number (0-100),
+          "itemCount": number,
+          "isMidterm": boolean (true if it is a Midterm Exam),
+          "isFinal": boolean (true if it is a Final Exam),
+          "midtermWeight": number (optional, weight when in midterm mode),
+          "finalWeight": number (optional, weight when in final test mode)
+        }
+      ]
+    }
+  ]
+}
+
+Context:
+- Look for terms like 'Mini test', 'Midterm', 'Final', 'Termly Result'.
+- If the text lists subjects like 'Speaking', 'Vocabulary' under a test, create those as Subjects or Categories depending on how the user grouped them.
+- If it's for 'Level 6' or 'Level 7', use that as the name.
+- Be precise with percentages.
+- For itemCount, if not specified, default to 1.`,
+        config: {
+          responseMimeType: "application/json",
+        }
+      });
+
+      res.json(JSON.parse(response.text));
+    } catch (error: any) {
+      console.error("Parse level error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

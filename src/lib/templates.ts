@@ -536,6 +536,91 @@ export const SYSTEM_TEMPLATES = [
     levels: []
   },
   {
+    id: 'dpss-program',
+    name: 'DPSS Program',
+    authorName: 'System',
+    levels: [
+      {
+        id: 'dpss_level_6',
+        name: 'Level 6',
+        attendanceWeight: 0,
+        subjects: [
+          {
+            id: 'dpss_l6_general',
+            name: 'General English',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            fullModeMidtermWeight: 8,
+            fullModeFinalWeight: 62,
+            categories: [
+              { id: 'l6_speaking_quiz', name: 'Speaking Quiz', weight: 5, itemCount: 1, itemMaxScores: [100] },
+              { id: 'l6_campaign', name: 'Campaign', weight: 7.5, itemCount: 1, itemMaxScores: [100] },
+              { id: 'l6_voice_assignment', name: 'Voice-recorded Assignment', weight: 7.5, itemCount: 1, itemMaxScores: [100] },
+              { id: 'l6_english_env', name: 'English Environment', weight: 5, itemCount: 1, itemMaxScores: [100] },
+              { id: 'l6_participation', name: 'Home. & Class Participation', weight: 5, itemCount: 1, itemMaxScores: [100] },
+              // Midterm Categories (Total weight 8% in full mode, 100% in midterm mode)
+              { id: 'l6_mt_speaking', name: 'Midterm: Speaking', weight: 1.2, midtermWeight: 15, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l6_mt_vocab', name: 'Midterm: Vocabulary', weight: 1.2, midtermWeight: 15, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l6_mt_dictation', name: 'Midterm: Dictation', weight: 0.4, midtermWeight: 5, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l6_mt_listening', name: 'Midterm: Listening', weight: 1.2, midtermWeight: 15, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l6_mt_reading', name: 'Midterm: Reading', weight: 1.2, midtermWeight: 15, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l6_mt_grammar', name: 'Midterm: Grammar', weight: 1.6, midtermWeight: 20, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l6_mt_traffic', name: 'Midterm: Traffic Law', weight: 1.2, midtermWeight: 15, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              // Final Categories (Total weight 62% in full mode, 100% in final mode)
+              { id: 'l6_ft_speaking', name: 'Final: Speaking', weight: 9.3, finalWeight: 15, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l6_ft_vocab', name: 'Final: Vocabulary', weight: 9.3, finalWeight: 15, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l6_ft_dictation', name: 'Final: Dictation', weight: 3.1, finalWeight: 5, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l6_ft_listening', name: 'Final: Listening', weight: 9.3, finalWeight: 15, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l6_ft_reading', name: 'Final: Reading', weight: 9.3, finalWeight: 15, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l6_ft_grammar', name: 'Final: Grammar', weight: 12.4, finalWeight: 20, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l6_ft_traffic', name: 'Final: Traffic Law', weight: 9.3, finalWeight: 15, itemCount: 1, itemMaxScores: [100], isFinal: true },
+            ]
+          }
+        ]
+      },
+      {
+        id: 'dpss_level_7',
+        name: 'Level 7',
+        attendanceWeight: 0,
+        subjects: [
+          {
+            id: 'dpss_l7_general',
+            name: 'General English',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            fullModeMidtermWeight: 8,
+            fullModeFinalWeight: 62,
+            categories: [
+              { id: 'l7_speaking_quiz', name: 'Speaking Quiz', weight: 5, itemCount: 1, itemMaxScores: [100] },
+              { id: 'l7_campaign', name: 'Campaign', weight: 7.5, itemCount: 1, itemMaxScores: [100] },
+              { id: 'l7_voice_assignment', name: 'Voice-recorded Assignment', weight: 7.5, itemCount: 1, itemMaxScores: [100] },
+              { id: 'l7_english_env', name: 'English Environment', weight: 5, itemCount: 1, itemMaxScores: [100] },
+              { id: 'l7_participation', name: 'Home. & Class Participation', weight: 5, itemCount: 1, itemMaxScores: [100] },
+              // Midterm Categories (Total weight 8% in full mode, 100% in midterm mode)
+              { id: 'l7_mt_speaking', name: 'Midterm: Speaking', weight: 1.2, midtermWeight: 15, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l7_mt_vocab', name: 'Midterm: Vocabulary', weight: 1.2, midtermWeight: 15, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l7_mt_dictation', name: 'Midterm: Dictation', weight: 0.4, midtermWeight: 5, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l7_mt_listening', name: 'Midterm: Listening', weight: 1.2, midtermWeight: 15, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l7_mt_reading', name: 'Midterm: Reading', weight: 1.2, midtermWeight: 15, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l7_mt_grammar', name: 'Midterm: Grammar', weight: 1.6, midtermWeight: 20, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              { id: 'l7_mt_traffic', name: 'Midterm: Traffic Law', weight: 1.2, midtermWeight: 15, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+              // Final Categories (Total weight 62% in full mode, 100% in final mode)
+              { id: 'l7_ft_speaking', name: 'Final: Speaking', weight: 9.3, finalWeight: 15, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l7_ft_vocab', name: 'Final: Vocabulary', weight: 9.3, finalWeight: 15, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l7_ft_dictation', name: 'Final: Dictation', weight: 3.1, finalWeight: 5, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l7_ft_listening', name: 'Final: Listening', weight: 9.3, finalWeight: 15, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l7_ft_reading', name: 'Final: Reading', weight: 9.3, finalWeight: 15, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l7_ft_grammar', name: 'Final: Grammar', weight: 12.4, finalWeight: 20, itemCount: 1, itemMaxScores: [100], isFinal: true },
+              { id: 'l7_ft_traffic', name: 'Final: Traffic Law', weight: 9.3, finalWeight: 15, itemCount: 1, itemMaxScores: [100], isFinal: true },
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'math-program',
     name: 'Math Program',
     authorName: 'System',
