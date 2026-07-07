@@ -10,7 +10,7 @@ import {
   MANUAL_COLORS,
 } from "../types";
 import { calculateAttendancePercentage } from "../lib/attendanceUtils";
-import { Trash2, ArrowUpDown, EyeOff, Eye, SlidersHorizontal, ClipboardPaste, Wand2, Search, X, ChevronDown, ChevronUp, BarChart3, Award, CheckCircle2, AlertTriangle, BookOpen, Calendar } from "lucide-react";
+import { Trash2, ArrowUpDown, EyeOff, Eye, SlidersHorizontal, ClipboardPaste, Wand2, Search, X, ChevronDown, ChevronUp, BarChart3, Award, CheckCircle2, AlertTriangle, BookOpen, Calendar, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 const TrendLine = ({ data }: { data: number[] }) => {
@@ -562,20 +562,6 @@ export default function GradeTable({
                 catSpan = 1;
               }
             }
-          } else if (isMid || isFin) {
-            itemCols.push({
-              categoryId: category.id,
-              subjectId: subject.id,
-              itemIndex: isMid ? -11 : -12,
-              label: "Result",
-              maxScore: 100,
-              isAvg: true,
-              subjectIndex,
-              theme,
-              isHidden: false,
-              categoryWeight: category.weight,
-            });
-            catSpan = 1;
           } else {
             if (settings.showScoreColumns) {
               for (let i = 0; i < category.itemCount; i++) {
@@ -1344,7 +1330,7 @@ export default function GradeTable({
           </tr>
 
           {/* Row 2: Categories */}
-          {(resultMode === 'full' || (resultMode !== 'full' && categoryCols.some(cc => !cc.isHiddenSubject && cc.colSpan > 1))) && (
+          {(resultMode === 'full' || categoryCols.some(cc => !cc.isHiddenSubject && cc.colSpan > 1)) && (
             <tr>
               {categoryCols.map((cc, i) => {
                   if (cc.isHiddenSubject) return null;
@@ -1409,6 +1395,35 @@ export default function GradeTable({
                                       )}
                                     </button>
                                   )}
+                                  {(resultMode === 'midterm' && isMidtermCategory(cc.category.name)) || (resultMode === 'final' && isFinalCategory(cc.category.name)) ? (
+                                    <button
+                                      onClick={() => {
+                                        const catName = prompt("Enter sub-category name:");
+                                        if (catName) {
+                                          const isMid = resultMode === 'midterm' && isMidtermCategory(cc.category.name);
+                                          const isFin = resultMode === 'final' && isFinalCategory(cc.category.name);
+                                          const newCat = {
+                                            id: Math.random().toString(36).substr(2, 9),
+                                            name: catName,
+                                            weight: 0,
+                                            itemCount: 1,
+                                            itemMaxScores: [100],
+                                            ...(isMid ? { midtermWeight: 0 } : {}),
+                                            ...(isFin ? { finalWeight: 0 } : {}),
+                                          };
+                                          const updatedSubjects = level.subjects.map(s => {
+                                            if (s.id !== cc.subjectId) return s;
+                                            return { ...s, categories: [...s.categories, newCat] };
+                                          });
+                                          if (onUpdateLevel) onUpdateLevel({ ...level, subjects: updatedSubjects });
+                                        }
+                                      }}
+                                      className="p-1 hover:bg-black/10 rounded transition-colors ml-1"
+                                      title="Add sub-category"
+                                    >
+                                      <Plus className="w-3.5 h-3.5 text-blue-600" />
+                                    </button>
+                                  ) : null}
                                 </>
                               );
                             })()}
@@ -1422,7 +1437,7 @@ export default function GradeTable({
           )}
 
           {/* Row 3: Items */}
-          {(resultMode === 'full' || (resultMode !== 'full' && itemCols.some(ic => !ic.isHiddenSubject && ic.itemIndex >= 0))) && (
+          {(resultMode === 'full' || itemCols.some(ic => !ic.isHiddenSubject && ic.itemIndex >= 0)) && (
             <tr>
               {itemCols.map((ic, i) => {
                   if (ic.isHiddenSubject) return null;

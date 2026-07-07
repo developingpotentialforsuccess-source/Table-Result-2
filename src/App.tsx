@@ -492,6 +492,7 @@ export default function App() {
   const [copyStudentsFromTemplate, setCopyStudentsFromTemplate] = useState(false);
   const [classCreationSource, setClassCreationSource] = useState<"scratch" | "existing" | "template">("scratch");
   const [selectedTemplateLibraryId, setSelectedTemplateLibraryId] = useState<string>("");
+  const [selectedLevelFromLibraryId, setSelectedLevelFromLibraryId] = useState<string>("");
   const [savedTemplates, setSavedTemplates] = useState<{ id: string, name: string, authorName: string, levels: Level[] }[]>(SYSTEM_TEMPLATES);
   const [classSortBy, setClassSortBy] = useState<"name" | "level">("name");
 
@@ -1534,7 +1535,7 @@ export default function App() {
       className={`min-h-screen ${currentWp.bgClass} text-slate-900 font-sans flex flex-col transition-colors duration-200`}
     >
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-30 shadow-sm">
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 relative z-30 shadow-sm">
         <div className="max-w-[1400px] mx-auto space-y-4">
           {/* Top Brand & Status Line */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-100 pb-3">
@@ -2435,6 +2436,7 @@ export default function App() {
                       onChange={(e) => {
                         const libId = e.target.value;
                         setSelectedTemplateLibraryId(libId);
+                        setSelectedLevelFromLibraryId("");
                         if (libId) {
                           const chosenTemplate = savedTemplates.find((t) => t.id === libId);
                           if (chosenTemplate) {
@@ -2450,13 +2452,37 @@ export default function App() {
                       }}
                       className="w-full px-3 py-2 text-xs bg-white border border-purple-200 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/20 rounded-lg outline-none font-bold text-slate-700 cursor-pointer"
                     >
-                      <option value="">-- Choose template from library --</option>
+                      <option value="">-- Choose program from library --</option>
                       {savedTemplates.map((template) => (
                         <option key={template.id} value={template.id}>
                           {template.name} ({template.authorName || "Teacher"})
                         </option>
                       ))}
                     </select>
+
+                    {selectedTemplateLibraryId && (
+                      <select
+                        value={selectedLevelFromLibraryId}
+                        onChange={(e) => {
+                          const lvlId = e.target.value;
+                          setSelectedLevelFromLibraryId(lvlId);
+                          const program = savedTemplates.find((t) => t.id === selectedTemplateLibraryId);
+                          const chosenLevel = program?.levels.find((l) => l.id === lvlId);
+                          if (chosenLevel) {
+                            setNewLevelId(chosenLevel.id);
+                            setNewClassName(`${program?.name || ""} - ${chosenLevel.name}`);
+                          }
+                        }}
+                        className="w-full px-3 py-2 mt-2 text-xs bg-white border border-purple-200 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/20 rounded-lg outline-none font-bold text-slate-700 cursor-pointer"
+                      >
+                        <option value="">-- Choose level --</option>
+                        {(savedTemplates.find((t) => t.id === selectedTemplateLibraryId)?.levels || []).map((lvl) => (
+                          <option key={lvl.id} value={lvl.id}>
+                            {lvl.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <p className="text-[10px] text-purple-600 font-medium leading-relaxed">
                       This will import the template's grading structure and subjects to configure your new class automatically.
                     </p>

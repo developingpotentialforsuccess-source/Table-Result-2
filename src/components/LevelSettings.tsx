@@ -243,25 +243,7 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
             <p className="text-sm text-slate-500 px-1 mt-1">Configure subjects, assignments, and test weights for this level.</p>
           </div>
           <div className="flex items-center gap-3">
-            {isLocked ? (
-              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-                <Lock className="w-4 h-4 text-amber-600" />
-                <input 
-                  type="password"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  placeholder="Enter Code"
-                  className="w-24 text-xs bg-transparent focus:outline-none"
-                  onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
-                />
-                <button 
-                  onClick={handleUnlock}
-                  className="text-xs font-medium text-amber-700 hover:text-amber-800"
-                >
-                  Unlock
-                </button>
-              </div>
-            ) : (
+            {!isLocked && (
               <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
                 <Edit2 className="w-4 h-4 text-emerald-600" />
                 <span className="text-xs font-medium text-emerald-700">Editing Unlocked</span>
@@ -284,12 +266,28 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
         {isLocked && (
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg flex items-start gap-3 mb-4">
             <Lock className="w-5 h-5 text-slate-400 mt-0.5" />
-            <div>
+            <div className="flex-1">
               <h4 className="text-sm font-medium text-slate-700">Level Structure Locked</h4>
               <p className="text-xs text-slate-500 mt-1">
                 The structure of this level is locked to prevent accidental changes to standard templates. 
-                Enter the access code at the top to modify subjects, categories, or weights.
+                Enter the access code below to modify subjects, categories, or weights.
               </p>
+              <div className="flex items-center gap-2 mt-3">
+                <input 
+                  type="password"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  placeholder="Enter access code"
+                  className="w-32 text-xs bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
+                />
+                <button 
+                  onClick={handleUnlock}
+                  className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors"
+                >
+                  Unlock
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -523,14 +521,43 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                                 />
                               </div>
                             </div>
-                            {!isLocked && (
-                              <button
-                                onClick={() => handleDeleteCategory(subject.id, category.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
+                            <div className="flex flex-col gap-1">
+                              {isLocked && (
+                                <button
+                                  onClick={() => {
+                                    const catName = prompt("Enter sub-category name:");
+                                    if (catName) {
+                                      const newCat: Category = {
+                                        id: Math.random().toString(36).substr(2, 9),
+                                        name: catName,
+                                        weight: 0,
+                                        itemCount: 1,
+                                        itemMaxScores: [100],
+                                        ...(isMid ? { midtermWeight: 0 } : {}),
+                                        ...(isFin ? { finalWeight: 0 } : {}),
+                                      };
+                                      const updatedSubjects = level.subjects.map(s => {
+                                        if (s.id !== subject.id) return s;
+                                        return { ...s, categories: [...s.categories, newCat] };
+                                      });
+                                      onUpdateLevel({ ...level, subjects: updatedSubjects });
+                                    }
+                                  }}
+                                  className="p-1.5 text-blue-500 hover:text-blue-700 rounded-md hover:bg-blue-50 transition-colors"
+                                  title="Add category for this test"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </button>
+                              )}
+                              {!isLocked && (
+                                <button
+                                  onClick={() => handleDeleteCategory(subject.id, category.id)}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
