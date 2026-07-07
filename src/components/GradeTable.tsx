@@ -656,61 +656,9 @@ export default function GradeTable({
         });
       }
 
-      // Add Exam Columns (Only if no matching category exists in the subject)
+      // Auto Exam Columns logic removed as requested by user
       const hasMidtermCat = subject.categories.some(c => isMidtermCategory(c));
       const hasFinalCat = subject.categories.some(c => isFinalCategory(c));
-
-      if (!hasMidtermCat) {
-        const midWeight = subject.fullModeMidtermWeight ?? 0;
-        if (midWeight > 0) {
-          const examTheme = getTheme(subjectIndex, "Midterm", settings);
-          categoryCols.push({
-            category: { id: `exam_midterm_cat_${subject.id}`, name: "MID-TERM TEST", weight: midWeight },
-            colSpan: 1,
-            subjectId: subject.id,
-            subjectIndex,
-            theme: examTheme,
-          });
-          itemCols.push({
-            categoryId: `exam_midterm_${subject.id}`,
-            subjectId: subject.id,
-            itemIndex: -1,
-            label: resultMode === 'full' ? "Weighted" : "Raw Score",
-            maxScore: subject.midtermMaxScore || 100,
-            isAvg: false,
-            subjectIndex,
-            theme: examTheme,
-            subjectWeightMidterm: midWeight,
-          });
-          subjectSpan += 1;
-        }
-      }
-
-      if (!hasFinalCat) {
-        const finalWeight = subject.fullModeFinalWeight ?? 0;
-        if (finalWeight > 0) {
-          const examTheme = getTheme(subjectIndex, "Final", settings);
-          categoryCols.push({
-            category: { id: `exam_final_cat_${subject.id}`, name: "FINAL TEST", weight: finalWeight },
-            colSpan: 1,
-            subjectId: subject.id,
-            subjectIndex,
-            theme: examTheme,
-          });
-          itemCols.push({
-            categoryId: `exam_final_${subject.id}`,
-            subjectId: subject.id,
-            itemIndex: -1,
-            label: resultMode === 'full' ? "Weighted" : "Raw Score",
-            maxScore: subject.finalMaxScore || 100,
-            isAvg: false,
-            subjectIndex,
-            theme: examTheme,
-            subjectWeightFinal: finalWeight,
-          });
-          subjectSpan += 1;
-        }
-      }
 
       if (resultMode === 'full') {
         const combinedTheme = getTheme(subjectIndex, "Combined", settings);

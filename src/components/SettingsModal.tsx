@@ -38,6 +38,7 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   const [backupStatus, setBackupStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [backupMessage, setBackupMessage] = useState('');
+  const [unlockCode, setUnlockCode] = useState('');
 
   const getScaleValues = (mode: 'full' | 'midterm' | 'final', type: 'grade' | 'status') => {
     const isOldStatusScale = (s?: { grade: string }[]) => {
@@ -201,14 +202,40 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
       alert("Renaming shared templates requires cloud connection.");
       return;
     }
-    if (!user || user.uid !== authorId) return;
+    
+    if (unlockCode.trim().toUpperCase() !== "DPSS") {
+      alert("Please enter the correct unlock code (DPSS) below the library to rename templates.");
+      return;
+    }
+
     const newName = prompt("Enter new name for this template:", currentName);
     if (!newName || newName === currentName) return;
     
+    // Check if it's a system template
+    const isSystem = SYSTEM_TEMPLATES.some(t => t.id === templateId);
+    
     try {
-      await updateDoc(doc(db, `templates`, templateId), {
-        name: newName
-      });
+      if (isSystem) {
+        // For system templates, create a cloned version in their library with the new name
+        const systemTemplate = SYSTEM_TEMPLATES.find(t => t.id === templateId);
+        if (!systemTemplate) return;
+        
+        await setDoc(doc(db, `templates`, `${templateId}_renamed_${Date.now()}`), {
+          name: newName,
+          authorId: user?.uid || 'guest',
+          authorName: user?.displayName || user?.email || 'Teacher',
+          levels: systemTemplate.levels,
+          originalSystemId: templateId // To help hide the original if we want
+        });
+        alert("System template renamed and saved to your library.");
+      } else {
+        // Regular template rename (check author if not unlocked by DPSS)
+        // Actually the user said "I don't have to copy. I can rename it directly"
+        // If they have DPSS, they can rename ANY template.
+        await updateDoc(doc(db, `templates`, templateId), {
+          name: newName
+        });
+      }
       fetchTemplates();
     } catch (e) {
       console.error("Error renaming template:", e);
@@ -241,14 +268,20 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
       alert("Deleting shared templates requires cloud connection.");
       return;
     }
-    const code = prompt("Enter verification code to delete this template from the library:");
-    if (!code || code.trim().toLowerCase() !== "dpss") {
-      alert("Invalid verification code. You cannot delete templates from the library.");
+    
+    if (unlockCode.trim().toUpperCase() !== "DPSS") {
+      alert("Please enter the correct unlock code (DPSS) below the library to delete templates.");
       return;
     }
     
-    if (confirm("Are you sure you want to delete this template from the community library?")) {
+    if (confirm("Are you sure you want to delete this template? This cannot be undone.")) {
       try {
+        const isSystem = SYSTEM_TEMPLATES.some(t => t.id === templateId);
+        if (isSystem) {
+          alert("System templates cannot be permanently deleted from the source, but you can hide them or they will be removed from your view if we implemented hiding logic.");
+          // For now, we just block system deletion but allow it for their own
+          return;
+        }
         await deleteDoc(doc(db, `templates`, templateId));
         fetchTemplates();
         alert("Template deleted successfully.");
@@ -1399,6 +1432,33 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                       <p className="text-sm text-slate-500">Save your full level structures to the community library, or load existing ones.</p>
                     </div>
                     <div className="flex items-center gap-3">
+                      {user && (
+                        <button 
+                          onClick={async () => {
+                            const templateName = prompt("Enter a name for this new template (based on current class):", `${level.name} Template`);
+                            if (!templateName) return;
+                            
+                            try {
+                              const templateId = Math.random().toString(36).substring(2, 9);
+                              await setDoc(doc(db, `templates`, templateId), {
+                                name: templateName,
+                                authorId: user.uid,
+                                authorName: user.displayName || user.email || 'Teacher',
+                                levels: [level]
+                              });
+                              fetchTemplates();
+                              alert("Current class saved as a template successfully!");
+                            } catch (e) {
+                              console.error("Error saving current class as template:", e);
+                              alert("Failed to save template.");
+                            }
+                          }} 
+                          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium shadow-sm"
+                        >
+                          <Save className="w-4 h-4" />
+                          Save Current Class as Template
+                        </button>
+                      )}
                       {onOpenTemplateModal && (
                         <button onClick={() => { onOpenTemplateModal(); onClose(); }} className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors text-sm font-medium shadow-sm">
                           <Copy className="w-4 h-4" />
@@ -1408,7 +1468,7 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                       {user ? (
                         <button onClick={handleSaveTemplate} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm">
                           <Save className="w-4 h-4" />
-                          Save My Levels as Template
+                          Save All My Levels as Template
                         </button>
                       ) : (
                         <button onClick={() => setActiveTab('account')} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium border border-slate-200 shadow-sm">
@@ -1491,10 +1551,7 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                                       <h4 className="font-bold text-slate-800 text-lg truncate leading-tight group-hover:text-indigo-700 transition-colors" title={template.name}>{template.name}</h4>
                                       <div className="flex items-center gap-1 shrink-0">
                                         <button 
-                                          onClick={() => {
-                                            const newName = prompt("Enter new name for this template:", template.name);
-                                            if (newName) handleRenameTemplate(template.id, (template as any).authorId, newName);
-                                          }}
+                                          onClick={() => handleRenameTemplate(template.id, (template as any).authorId, template.name)}
                                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                           title="Rename"
                                         >
@@ -1539,8 +1596,32 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                                   <div className="p-3 bg-blue-50 rounded-xl shrink-0 group-hover:bg-blue-100 transition-colors">
                                     <FileText className="w-6 h-6 text-blue-600" />
                                   </div>
-                                  <div className="min-w-0">
-                                    <h4 className="font-bold text-slate-800 text-lg leading-tight group-hover:text-blue-700 transition-colors">{lvl.name}</h4>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <h4 className="font-bold text-slate-800 text-lg leading-tight group-hover:text-blue-700 transition-colors">{lvl.name}</h4>
+                                      <div className="flex items-center gap-1">
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRenameTemplate(lvl.id, 'system', lvl.name);
+                                          }}
+                                          className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                          title="Rename System Template"
+                                        >
+                                          <Edit2 className="w-3 h-3" />
+                                        </button>
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteTemplate(lvl.id, 'system');
+                                          }}
+                                          className="p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                          title="Delete System Template"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    </div>
                                     <p className="text-xs text-slate-500 mt-1.5 font-medium flex items-center gap-2">
                                       <span className="px-1.5 py-0.5 bg-slate-100 rounded">{lvl.subjects.length} Subjects</span>
                                       <span className="w-1 h-1 bg-slate-300 rounded-full" />
@@ -1571,6 +1652,28 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                             ))}
                           </div>
                         )}
+                        
+                        {/* Unlock Code Section */}
+                        <div className="mt-12 pt-8 border-t border-slate-200 max-w-md mx-auto text-center">
+                          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">
+                            <Lock className="w-3 h-3" />
+                            Admin Template Management
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-800 mb-2">Enter Unlock Code to Manage Library</h4>
+                          <p className="text-xs text-slate-500 mb-4">Enter the DPS authorization code to rename or delete templates directly from the library.</p>
+                          <div className="flex gap-2 max-w-xs mx-auto">
+                            <input 
+                              type="password"
+                              value={unlockCode}
+                              onChange={(e) => setUnlockCode(e.target.value)}
+                              placeholder="Enter Code (e.g. DPSS)"
+                              className="flex-1 px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-center font-mono tracking-widest"
+                            />
+                          </div>
+                          {unlockCode.trim().toUpperCase() === 'DPSS' && (
+                            <p className="mt-2 text-[10px] font-bold text-green-600 uppercase animate-pulse">✓ Library Unlocked - Administrative Access Granted</p>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
