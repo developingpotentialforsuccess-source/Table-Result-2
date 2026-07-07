@@ -44,6 +44,7 @@ export interface Level {
   customDivisor?: number;
   midtermCustomDivisor?: number;
   finalCustomDivisor?: number;
+  attendanceWeight?: number;
 }
 
 export interface Student {
@@ -246,7 +247,7 @@ export function calculateStatus(
 
     const attendanceVal = parseFloat(attendance || "100");
     if (!isNaN(attendanceVal) && attendanceVal < 70) {
-      status = "Auto-Repeat";
+      status = "Fail";
     }
     return status;
   }

@@ -936,6 +936,13 @@ export default function GradeTable({
           totalWeightedSum += subjectScores[subject.id];
         }
       });
+      
+      const attWeight = level.attendanceWeight || 0;
+      if (resultMode === 'full' && attWeight > 0) {
+        const attPct = calculateAttendancePercentage(student, settings);
+        totalWeightSum += attWeight;
+        totalWeightedSum += (attPct / 100) * attWeight;
+      }
 
       const effectiveDivisor = resultMode === 'midterm'
         ? (level?.midtermCustomDivisor ? level.midtermCustomDivisor * 100 : totalWeightSum)
@@ -1099,14 +1106,14 @@ export default function GradeTable({
           <tr>
             <th
               rowSpan={3}
-              className={`px-2 py-2 font-bold border-r ${gridStyles.headerBorderClass} w-10 text-center sticky left-0 z-20 ${gridStyles.shadowHeader} ${currentPaper.bgClass}`}
+              className={`px-2 py-2 font-bold border-r ${gridStyles.headerBorderClass} w-10 text-center sm:sticky left-0 z-20 sm:${gridStyles.shadowHeader} ${currentPaper.bgClass}`}
               style={{ ...currentPaper.customStyle, left: 0 }}
             >
               No
             </th>
             <th
               rowSpan={3}
-              className={`px-3 py-2 font-black border-r ${gridStyles.headerBorderClass} w-[180px] min-w-[180px] max-w-[180px] sticky left-10 z-20 ${gridStyles.shadowHeader} cursor-pointer hover:bg-black/[0.05] transition-colors ${currentPaper.bgClass} uppercase tracking-tight`}
+              className={`px-3 py-2 font-black border-r ${gridStyles.headerBorderClass} w-[180px] min-w-[180px] max-w-[180px] sm:sticky left-10 z-20 sm:${gridStyles.shadowHeader} cursor-pointer hover:bg-black/[0.05] transition-colors ${currentPaper.bgClass} uppercase tracking-tight`}
               style={{ ...currentPaper.customStyle, left: "2.5rem" }}
               onClick={() => handleSort("name")}
             >
@@ -1395,35 +1402,45 @@ export default function GradeTable({
                                       )}
                                     </button>
                                   )}
-                                  {(resultMode === 'midterm' && isMidtermCategory(cc.category.name)) || (resultMode === 'final' && isFinalCategory(cc.category.name)) ? (
-                                    <button
-                                      onClick={() => {
-                                        const catName = prompt("Enter sub-category name:");
-                                        if (catName) {
-                                          const isMid = resultMode === 'midterm' && isMidtermCategory(cc.category.name);
-                                          const isFin = resultMode === 'final' && isFinalCategory(cc.category.name);
-                                          const newCat = {
-                                            id: Math.random().toString(36).substr(2, 9),
-                                            name: catName,
-                                            weight: 0,
-                                            itemCount: 1,
-                                            itemMaxScores: [100],
-                                            ...(isMid ? { midtermWeight: 0 } : {}),
-                                            ...(isFin ? { finalWeight: 0 } : {}),
-                                          };
-                                          const updatedSubjects = level.subjects.map(s => {
-                                            if (s.id !== cc.subjectId) return s;
-                                            return { ...s, categories: [...s.categories, newCat] };
-                                          });
-                                          if (onUpdateLevel) onUpdateLevel({ ...level, subjects: updatedSubjects });
-                                        }
-                                      }}
-                                      className="p-1 hover:bg-black/10 rounded transition-colors ml-1"
-                                      title="Add sub-category"
-                                    >
-                                      <Plus className="w-3.5 h-3.5 text-blue-600" />
-                                    </button>
-                                  ) : null}
+                                  {(() => {
+                                    const isMidCol = resultMode === 'full' && cc.category.id.startsWith('exam_midterm_cat_');
+                                    const isFinCol = resultMode === 'full' && cc.category.id.startsWith('exam_final_cat_');
+                                    const isMidCat = isMidtermCategory(cc.category.name);
+                                    const isFinCat = isFinalCategory(cc.category.name);
+                                    
+                                    if (isMidCol || isFinCol || isMidCat || isFinCat) {
+                                      return (
+                                        <button
+                                          onClick={() => {
+                                            const rawName = prompt("Enter sub-category name:");
+                                            if (rawName) {
+                                              const catName = (isMidCol || isMidCat) && !isMidtermCategory(rawName) ? `${rawName} MIDTERM` : 
+                                                              (isFinCol || isFinCat) && !isFinalCategory(rawName) ? `${rawName} FINAL` : rawName;
+                                              const newCat = {
+                                                id: Math.random().toString(36).substr(2, 9),
+                                                name: catName,
+                                                weight: 0,
+                                                itemCount: 1,
+                                                itemMaxScores: [100],
+                                                ...(isMidCol || isMidCat ? { midtermWeight: 0 } : {}),
+                                                ...(isFinCol || isFinCat ? { finalWeight: 0 } : {}),
+                                              };
+                                              const updatedSubjects = level.subjects.map(s => {
+                                                if (s.id !== cc.subjectId) return s;
+                                                return { ...s, categories: [...s.categories, newCat] };
+                                              });
+                                              if (onUpdateLevel) onUpdateLevel({ ...level, subjects: updatedSubjects });
+                                            }
+                                          }}
+                                          className="p-1 hover:bg-black/10 rounded transition-colors ml-1"
+                                          title="Add sub-category"
+                                        >
+                                          <Plus className="w-3.5 h-3.5 text-blue-600" />
+                                        </button>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                 </>
                               );
                             })()}
@@ -1572,13 +1589,13 @@ export default function GradeTable({
                   className={`hover:bg-blue-50/30 transition-colors group ${index % 2 === 0 ? "bg-white" : "bg-slate-50/50"} ${student.isHidden ? "bg-slate-100/40 text-slate-400 opacity-60 italic" : ""}`}
                 >
                 <td
-                  className={`px-1 py-2 border-r border-b ${gridStyles.bodyBorderClass} text-center font-bold text-slate-400 text-xs sticky left-0 z-10 ${gridStyles.shadowBody} ${currentPaper.bgClass}`}
+                  className={`px-1 py-2 border-r border-b ${gridStyles.bodyBorderClass} text-center font-bold text-slate-400 text-xs sm:sticky left-0 z-10 sm:${gridStyles.shadowBody} ${currentPaper.bgClass}`}
                   style={{ ...currentPaper.customStyle, left: 0 }}
                 >
                   {index + 1}
                 </td>
                 <td
-                  className={`py-2 border-r border-b ${gridStyles.bodyBorderClass} sticky left-10 z-10 ${gridStyles.shadowBody} transition-colors w-[220px] min-w-[220px] max-w-[220px] ${currentPaper.bgClass} ${settings?.rowIndent ? 'pl-8 pr-1' : 'px-3'}`}
+                  className={`py-2 border-r border-b ${gridStyles.bodyBorderClass} sm:sticky left-10 z-10 sm:${gridStyles.shadowBody} transition-colors w-[220px] min-w-[220px] max-w-[220px] ${currentPaper.bgClass} ${settings?.rowIndent ? 'pl-8 pr-1' : 'px-3'}`}
                   style={{ ...currentPaper.customStyle, left: "2.5rem" }}
                 >
                   <div className="flex items-center gap-1.5">

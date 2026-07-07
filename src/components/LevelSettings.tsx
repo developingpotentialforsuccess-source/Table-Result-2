@@ -270,14 +270,14 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
               <h4 className="text-sm font-medium text-slate-700">Level Structure Locked</h4>
               <p className="text-xs text-slate-500 mt-1">
                 The structure of this level is locked to prevent accidental changes to standard templates. 
-                Enter the access code below to modify subjects, categories, or weights.
+                Enter the access code (DPSS) below to modify subjects, categories, or weights.
               </p>
               <div className="flex items-center gap-2 mt-3">
                 <input 
                   type="password"
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value)}
-                  placeholder="Enter access code"
+                  placeholder="Enter code (DPSS)"
                   className="w-32 text-xs bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
                 />
@@ -291,6 +291,34 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
             </div>
           </div>
         )}
+        
+        {!isLocked && (
+          <div className="bg-white border border-slate-200 rounded-xl p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-slate-800">Attendance Config (Standalone)</h4>
+                <p className="text-xs text-slate-500 mt-1">Set the weight of attendance in the final term result (e.g. 10%). Leave blank for 0%.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-600">Weight:</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={level.attendanceWeight ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? undefined : Number(e.target.value);
+                    if (onUpdateLevel) onUpdateLevel({ ...level, attendanceWeight: val });
+                  }}
+                  className="w-16 bg-slate-50 border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold"
+                  placeholder="0"
+                />
+                <span className="text-slate-500 text-sm font-medium">%</span>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {level.subjects.map((subject) => {
           const isExpanded = expandedSubject === subject.id;
           const subjectWeight = getSubjectWeight(subject);
