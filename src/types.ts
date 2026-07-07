@@ -6,6 +6,7 @@ export interface Category {
   weight: number; // percentage of total grade (e.g., 5)
   itemCount: number; // number of items (e.g., 5 for 5 quizzes)
   itemMaxScores: number[]; // maximum raw score for each item in this category
+  itemNames?: string[]; // custom names for each item
   midtermWeight?: number; // weight for midterm mode
   finalWeight?: number; // weight for final mode
   fullTermMidtermWeight?: number;

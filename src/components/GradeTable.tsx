@@ -580,7 +580,7 @@ export default function GradeTable({
                   categoryId: category.id,
                   subjectId: subject.id,
                   itemIndex: i,
-                  label: category.itemCount === 1 ? "Raw" : `Item ${i+1}`,
+                  label: category.itemNames?.[i] || (category.itemCount === 1 ? "Raw" : `Item ${i+1}`),
                   maxScore: category.itemMaxScores?.[i] ?? 100,
                   subjectIndex,
                   theme,
@@ -782,6 +782,30 @@ export default function GradeTable({
           ];
           newMaxScores[itemIndex] = newMax;
           return { ...c, itemMaxScores: newMaxScores };
+        }),
+      };
+    });
+    onUpdateLevel({ ...level, subjects: newSubjects });
+  };
+
+  const handleUpdateItemName = (
+    subjectId: string,
+    categoryId: string,
+    itemIndex: number,
+    newName: string,
+  ) => {
+    if (!onUpdateLevel) return;
+    const newSubjects = level.subjects.map((s) => {
+      if (s.id !== subjectId) return s;
+      return {
+        ...s,
+        categories: s.categories.map((c) => {
+          if (c.id !== categoryId) return c;
+          const newItemNames = [
+            ...(c.itemNames || Array(c.itemCount).fill("")),
+          ];
+          newItemNames[itemIndex] = newName;
+          return { ...c, itemNames: newItemNames };
         }),
       };
     });
@@ -1498,6 +1522,13 @@ export default function GradeTable({
                             {/* Only show MAX input for regular categories OR for exams when NOT in full mode */}
                             {!(resultMode === 'full' && ic.categoryId.startsWith('exam_')) ? (
                                 <div className="flex flex-col items-center gap-0.5">
+                                  <input 
+                                    type="text" 
+                                    value={ic.label} 
+                                    onChange={(e) => handleUpdateItemName(ic.subjectId, ic.categoryId, ic.itemIndex, e.target.value)}
+                                    className={`w-14 bg-transparent text-center font-bold text-[10px] uppercase ${theme.text} outline-none hover:bg-white/20 focus:bg-white/50 focus:ring-1 focus:ring-blue-200 rounded`}
+                                    placeholder={`Item ${ic.itemIndex + 1}`}
+                                  />
                                   <div className="flex items-center whitespace-nowrap bg-slate-50/50 px-1 py-0.5 rounded border border-slate-200/30">
                                     <div className="flex items-center text-[10px] font-bold text-red-600">
                                       <input
