@@ -97,7 +97,7 @@ const DEFAULT_SETTINGS: TeacherSettings = {
   showCategoryWeight: false,
   showCategoryHideIcon: false,
   completelyHideHiddenCategories: true,
-  showPctNextToWtd: true,
+  showWeightInHeader: true,
   dailySessions: 2,
   showAttendance: true,
   attendanceAbsencePenalty: 7.5,

@@ -114,7 +114,7 @@ export interface TeacherSettings {
   attendanceNoScoreWeeks?: number;
   quizNoScoreDays?: number;
   attendanceNoScoreDays?: number;
-  showPctNextToWtd?: boolean;
+  showWeightInHeader?: boolean;
   hideSystemTemplates?: boolean;
 }
 

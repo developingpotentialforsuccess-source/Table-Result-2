@@ -604,16 +604,27 @@ export default function GradeTable({
             }
 
             if (effectiveShowWtd) {
+              const activeWeight = resultMode === 'midterm'
+                ? (category.midtermWeight ?? category.weight)
+                : resultMode === 'final'
+                  ? (category.finalWeight ?? category.weight)
+                  : category.weight;
+              
+              const wtdLabel = settings.showWeightInHeader && activeWeight > 0 
+                ? `WTD (${activeWeight}%)` 
+                : "WTD";
+
               itemCols.push({
                 categoryId: category.id,
                 subjectId: subject.id,
                 itemIndex: -5,
-                label: "WTD",
+                label: wtdLabel,
                 maxScore: 100,
                 isAvg: true,
                 subjectIndex,
                 theme,
                 isHidden: false,
+                categoryWeight: activeWeight,
               });
               catSpan++;
             }
@@ -1291,13 +1302,30 @@ export default function GradeTable({
                           }, 0);
                           const currentSubjectTargetWeight = resultMode === 'midterm'
                             ? (sc.subject.midtermTargetWeight ?? sc.subject.targetWeight ?? 100)
-                            : (sc.subject.finalTargetWeight ?? sc.subject.targetWeight ?? 100);
+                            : resultMode === 'final'
+                              ? (sc.subject.finalTargetWeight ?? sc.subject.targetWeight ?? 100)
+                              : (sc.subject.targetWeight ?? 100);
+
+                          // Logic for "Where do you get this 100%?"
+                          // If there are multiple subjects, we show the relative percentage.
+                          // If there's only one subject, and the user hasn't explicitly set a target weight,
+                          // we might want to show the sum of its category weights if that's what they expect.
+                          const catWeightSum = sc.subject.categories.reduce((sum, c) => {
+                            const cw = resultMode === 'midterm' ? (c.midtermWeight ?? c.weight) : resultMode === 'final' ? (c.finalWeight ?? c.weight) : c.weight;
+                            return sum + (cw || 0);
+                          }, 0);
+
                           const weightPct = totalModeTargetWeight > 0 
                             ? Math.round((currentSubjectTargetWeight / totalModeTargetWeight) * 100) 
                             : 0;
+                          
+                          const displayWeight = (level.subjects.length === 1 && catWeightSum !== 100 && catWeightSum > 0) 
+                            ? catWeightSum 
+                            : weightPct;
+
                           return (
                             <span className="text-purple-600 font-extrabold mr-1.5 uppercase text-[9px] tracking-tight">
-                              {weightPct}%
+                              {displayWeight}%
                             </span>
                           );
                         })()}
@@ -1825,18 +1853,13 @@ export default function GradeTable({
 
                   if (ic.itemIndex === -5) {
                     const weighted = metrics.categoryAvgs[`${ic.categoryId}_weighted`] || 0;
-                    const pct = metrics.categoryAvgs[ic.categoryId] || 0;
-                    const showPct = settings?.showPctNextToWtd;
                     return (
                       <td
                         key={`${ic.categoryId}_weighted_${i}`}
                         className={`px-1 py-1 border-r border-b ${gridStyles.bodyBorderClass} font-bold text-center text-sm bg-purple-50/${op.special} text-purple-900 w-20 min-w-[5rem]`}
-                        title={`Weighted contribution: ${weighted.toFixed(1)} (Score: ${pct.toFixed(1)}%)`}
+                        title={`Weighted contribution: ${weighted.toFixed(1)}`}
                       >
-                        <div className="flex flex-col leading-tight">
-                          <span>{weighted.toFixed(1)}</span>
-                          {showPct && <span className="text-[10px] opacity-60 font-medium">({pct.toFixed(0)}%)</span>}
-                        </div>
+                        {weighted.toFixed(1)}
                       </td>
                     );
                   }
