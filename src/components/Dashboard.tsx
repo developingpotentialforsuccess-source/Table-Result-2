@@ -2,15 +2,18 @@ import React, { useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { Users } from 'lucide-react';
-import { Student, ClassRecord, Level, calculateGrade } from '../types';
-import { isMidtermCategory, isFinalCategory } from "../lib/categoryUtils";
+import { Users, Cloud, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Student, ClassRecord, Level, calculateGrade, TeacherSettings } from '../types';
+import { isMidtermCategory, isFinalCategory, getStudentScoreValue, isSubjectActiveInMode } from "../lib/categoryUtils";
 
 interface DashboardProps {
   currentRecord: ClassRecord;
   students: Student[];
   currentLevel: Level;
   resultMode: 'full' | 'midterm' | 'final';
+  settings?: TeacherSettings;
+  onSyncDrive?: () => Promise<void>;
+  isSyncing?: boolean;
 }
 
 const DEFAULT_GRADING_SCALE = [
@@ -30,7 +33,15 @@ const DEFAULT_GRADING_SCALE = [
 
 
 
-export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, currentLevel, resultMode }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ 
+  currentRecord, 
+  students, 
+  currentLevel, 
+  resultMode,
+  settings,
+  onSyncDrive,
+  isSyncing = false
+}) => {
   const stats = useMemo(() => {
     if (!currentRecord || !currentLevel) return null;
     const activeStudents = (students || []).filter(s => !s.isHidden);
@@ -51,14 +62,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
         let hasAnyScore = false;
 
         subject.categories.forEach((cat: any) => {
-          if (mode === 'midterm' && isFinalCategory(cat)) return;
-          if (mode === 'final' && isMidtermCategory(cat)) return;
+          const isMid = isMidtermCategory(cat);
+          const isFin = isFinalCategory(cat);
+          
+          const isVisibleInMode = mode === 'full' 
+            ? true 
+            : mode === 'midterm' 
+              ? isMid
+              : isFin;
+
+          if (!isVisibleInMode) return;
+
+          const activeWeight = mode === 'midterm'
+            ? (cat.midtermWeight ?? cat.weight)
+            : mode === 'final'
+              ? (cat.finalWeight ?? cat.weight)
+              : cat.weight;
 
           let catEarned = 0;
           let catMax = 0;
           let hasCatScore = false;
           for (let i = 0; i < cat.itemCount; i++) {
-            const s = student.scores[`${cat.id}_${i}`];
+            const s = getStudentScoreValue(student.scores, cat.id, i, mode, cat);
             if (typeof s === 'number') {
               catEarned += s;
               catMax += (cat.itemMaxScores?.[i] || 100);
@@ -72,13 +97,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
           }
           const catPct = catMax > 0 ? (catEarned / catMax) * 100 : 0;
           
-          const activeWeight = mode === 'midterm'
-            ? (cat.midtermWeight ?? cat.weight)
-            : mode === 'final'
-              ? (cat.finalWeight ?? cat.weight)
-              : cat.weight;
-
-          if (hasCatScore) {
+          if (hasCatScore && activeWeight > 0) {
             points += (catPct / 100) * activeWeight;
             weight += activeWeight;
           }
@@ -124,7 +143,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
           hasSubjectScore = hasMidScore || subject.categories.some((cat: any) => {
             if (isFinalCategory(cat)) return false;
             for (let i = 0; i < cat.itemCount; i++) {
-              if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
+              if (typeof getStudentScoreValue(student.scores, cat.id, i, 'midterm', cat) === 'number') return true;
             }
             return false;
           });
@@ -133,7 +152,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
           hasSubjectScore = hasFinalScore || subject.categories.some((cat: any) => {
             if (isMidtermCategory(cat)) return false;
             for (let i = 0; i < cat.itemCount; i++) {
-              if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
+              if (typeof getStudentScoreValue(student.scores, cat.id, i, 'final', cat) === 'number') return true;
             }
             return false;
           });
@@ -141,7 +160,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
           subjectPercentage = (midResult * (midWeight / 100)) + (finalResult * (finalWeight / 100));
           hasSubjectScore = hasMidScore || hasFinalScore || subject.categories.some((cat: any) => {
             for (let i = 0; i < cat.itemCount; i++) {
-              if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
+              if (typeof getStudentScoreValue(student.scores, cat.id, i, 'full', cat) === 'number') return true;
             }
             return false;
           });
@@ -158,12 +177,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
             : (subject.targetWeight ?? 100);
 
         const divideByAll = currentRecord.settings?.divideByAllSubjects !== false;
+        const isActive = isSubjectActiveInMode(subject, resultMode);
 
-        if (divideByAll || hasSubjectScore) {
-          totalWeightSum += targetWeight;
-        }
-        if (hasSubjectScore) {
-          totalWeightedSum += (subjectPercentage / 100) * targetWeight;
+        if (isActive) {
+          if (divideByAll || hasSubjectScore) {
+            totalWeightSum += targetWeight;
+          }
+          if (hasSubjectScore) {
+            totalWeightedSum += (subjectPercentage / 100) * targetWeight;
+          }
         }
       });
 
@@ -246,6 +268,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
            <select className="border border-slate-300 rounded p-1 text-sm bg-slate-50"><option>All</option></select>
            <div className="text-xs text-slate-500 font-semibold mb-1 mt-2">Select Grade</div>
            <select className="border border-slate-300 rounded p-1 text-sm bg-slate-50"><option>All</option></select>
+           
+           {onSyncDrive && (
+             <div className="mt-4 pt-3 border-t border-slate-100">
+               <button
+                 onClick={onSyncDrive}
+                 disabled={isSyncing}
+                 className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                   isSyncing 
+                     ? 'bg-slate-100 text-slate-400 cursor-wait' 
+                     : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
+                 }`}
+               >
+                 {isSyncing ? (
+                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                 ) : (
+                   <Cloud className="w-3.5 h-3.5" />
+                 )}
+                 {isSyncing ? "Syncing..." : "Sync to Drive"}
+               </button>
+               {settings?.lastDriveSync && (
+                 <div className="mt-1.5 flex items-center justify-center gap-1 text-[9px] text-slate-400 font-medium">
+                   <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
+                   Last sync: {new Date(settings.lastDriveSync).toLocaleString()}
+                 </div>
+               )}
+             </div>
+           )}
         </div>
         
         <div className="flex items-center gap-4 border-r border-slate-100 pr-4 pl-2 min-w-[150px]">

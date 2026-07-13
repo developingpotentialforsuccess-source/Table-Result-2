@@ -23,7 +23,12 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
   const [newCategoryMidtermWeight, setNewCategoryMidtermWeight] = useState<string>('');
   const [newCategoryFinalWeight, setNewCategoryFinalWeight] = useState<string>('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [isLocked, setIsLocked] = useState(true);
+  const [isLocked, setIsLocked] = useState(() => {
+    const adminCode = (localStorage.getItem("gradecalc_access_code") || "").trim().toUpperCase();
+    const isLocalUnlocked = localStorage.getItem("gradecalc_level_structure_unlocked") === "true";
+    const isAdmin = ["DPS", "DPSS", "BPS", "BPSS"].includes(adminCode);
+    return !(isAdmin || isLocalUnlocked);
+  });
   const [showSmartImport, setShowSmartImport] = useState(false);
   const [importText, setImportText] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -31,9 +36,11 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
   const totalWeight = getLevelTotalWeight(level);
 
   const handleUnlock = () => {
-    if (verificationCode.toUpperCase() === 'DPSS') {
+    const code = verificationCode.trim().toUpperCase();
+    if (["DPSS", "DPS", "BPS", "BPSS"].includes(code)) {
       setIsLocked(false);
       setVerificationCode('');
+      localStorage.setItem("gradecalc_level_structure_unlocked", "true");
     }
   };
 
@@ -359,14 +366,14 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
               <h4 className="text-sm font-medium text-slate-700">Level Structure Locked</h4>
               <p className="text-xs text-slate-500 mt-1">
                 The structure of this level is locked to prevent accidental changes to standard templates. 
-                Enter the access code (DPSS) below to modify subjects, categories, or weights.
+                Enter the access code (DPSS or BPS) below to modify subjects, categories, or weights.
               </p>
               <div className="flex items-center gap-2 mt-3">
                 <input 
                   type="password"
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value)}
-                  placeholder="Enter code (DPSS)"
+                  placeholder="Enter code"
                   className="w-32 text-xs bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
                 />
@@ -588,10 +595,17 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                               />
                             </div>
                             <div className="w-20 relative flex flex-col items-center gap-1">
-                              <span className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-0.5" title={isLocked ? "Weight locked by subject weight settings" : ""}>
+                              <button 
+                                type="button"
+                                className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-0.5 cursor-help hover:text-blue-600 transition-colors bg-transparent border-none p-0" 
+                                title="Click for a short explanation of 'Full Wt %'"
+                                onClick={() => {
+                                  alert("FULL WT % (Weighted Total Percentage):\n\nThis defines how much this specific category (e.g. Quizzes) contributes to the student's OVERALL grade for this subject in the 'Full Term' view.\n\nExample: If Quizzes is set to 5%, then even if a student gets 100% in all quizzes, they only earn 5 points toward their total grade for this subject.");
+                                }}
+                              >
                                 {isLocked && <Lock className="w-2.5 h-2.5 text-slate-400" />}
                                 Full Wt %
-                              </span>
+                              </button>
                               <div className="relative w-full">
                                 <input
                                   type="number"

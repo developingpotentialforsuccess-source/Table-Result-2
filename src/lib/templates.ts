@@ -625,5 +625,206 @@ export const SYSTEM_TEMPLATES = [
     name: 'Math Program',
     authorName: 'System',
     levels: []
+  },
+  {
+    id: 'mtis-program',
+    name: 'MTIS Program',
+    authorName: 'System',
+    levels: [
+      {
+        id: 'mtis_l1',
+        name: 'MTIS Level 1',
+        customDivisor: 5,
+        midtermCustomDivisor: 4,
+        finalCustomDivisor: 4,
+        gradingScale: [
+          { grade: 'A+', minScore: 90 },
+          { grade: 'A', minScore: 85 },
+          { grade: 'A-', minScore: 80 },
+          { grade: 'B+', minScore: 75 },
+          { grade: 'B', minScore: 70 },
+          { grade: 'B-', minScore: 65 },
+          { grade: 'C+', minScore: 60 },
+          { grade: 'C', minScore: 55 },
+          { grade: 'C-', minScore: 50 },
+          { grade: 'D', minScore: 45 },
+          { grade: 'E', minScore: 40 },
+          { grade: 'F', minScore: 0 },
+        ],
+        subjects: [
+          {
+            id: 'mtis_l1_attendance',
+            name: 'Attendance',
+            targetWeight: 100,
+            midtermTargetWeight: 0,
+            finalTargetWeight: 0,
+            categories: [
+              {
+                id: 'mtis_l1_att_main',
+                name: 'Attendance',
+                weight: 100,
+                itemCount: 1,
+                itemMaxScores: [100],
+                midtermWeight: 0,
+                finalWeight: 0,
+              }
+            ]
+          },
+          {
+            id: 'mtis_l1_english',
+            name: 'English Language Arts',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            categories: [
+              { id: 'mtis_l1_eng_read', name: 'Reading Quiz', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_eng_write', name: 'Writing Project', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_eng_speak', name: 'Listening & Speaking', weight: 10, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_eng_homework', name: 'Classwork & Homework', weight: 10, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_eng_mid', name: 'Midterm Test', weight: 20, itemCount: 1, itemMaxScores: [100], isMidterm: true, midtermWeight: 100, finalWeight: 0 },
+              { id: 'mtis_l1_eng_fin', name: 'Final Test', weight: 30, itemCount: 1, itemMaxScores: [100], isFinal: true, midtermWeight: 0, finalWeight: 100 }
+            ]
+          },
+          {
+            id: 'mtis_l1_math',
+            name: 'Mathematics',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            categories: [
+              { id: 'mtis_l1_math_quiz', name: 'Weekly Quizzes', weight: 20, itemCount: 5, itemMaxScores: [100, 100, 100, 100, 100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_math_class', name: 'Class Activities', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_math_hw', name: 'Homework', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_math_mid', name: 'Midterm Exam', weight: 20, itemCount: 1, itemMaxScores: [100], isMidterm: true, midtermWeight: 100, finalWeight: 0 },
+              { id: 'mtis_l1_math_fin', name: 'Final Exam', weight: 30, itemCount: 1, itemMaxScores: [100], isFinal: true, midtermWeight: 0, finalWeight: 100 }
+            ]
+          },
+          {
+            id: 'mtis_l1_science',
+            name: 'Science',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            categories: [
+              { id: 'mtis_l1_sci_quiz', name: 'Science Quizzes', weight: 20, itemCount: 2, itemMaxScores: [100, 100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_sci_lab', name: 'Lab Reports', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_sci_proj', name: 'Science Project', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_sci_mid', name: 'Midterm Exam', weight: 20, itemCount: 1, itemMaxScores: [100], isMidterm: true, midtermWeight: 100, finalWeight: 0 },
+              { id: 'mtis_l1_sci_fin', name: 'Final Exam', weight: 30, itemCount: 1, itemMaxScores: [100], isFinal: true, midtermWeight: 0, finalWeight: 100 }
+            ]
+          },
+          {
+            id: 'mtis_l1_social',
+            name: 'Social Studies',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            categories: [
+              { id: 'mtis_l1_soc_classwork', name: 'Classwork', weight: 25, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_soc_proj', name: 'Research Project', weight: 25, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l1_soc_mid', name: 'Midterm Exam', weight: 20, itemCount: 1, itemMaxScores: [100], isMidterm: true, midtermWeight: 100, finalWeight: 0 },
+              { id: 'mtis_l1_soc_fin', name: 'Final Exam', weight: 30, itemCount: 1, itemMaxScores: [100], isFinal: true, midtermWeight: 0, finalWeight: 100 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'mtis_l2',
+        name: 'MTIS Level 2',
+        customDivisor: 5,
+        midtermCustomDivisor: 4,
+        finalCustomDivisor: 4,
+        gradingScale: [
+          { grade: 'A+', minScore: 90 },
+          { grade: 'A', minScore: 85 },
+          { grade: 'A-', minScore: 80 },
+          { grade: 'B+', minScore: 75 },
+          { grade: 'B', minScore: 70 },
+          { grade: 'B-', minScore: 65 },
+          { grade: 'C+', minScore: 60 },
+          { grade: 'C', minScore: 55 },
+          { grade: 'C-', minScore: 50 },
+          { grade: 'D', minScore: 45 },
+          { grade: 'E', minScore: 40 },
+          { grade: 'F', minScore: 0 },
+        ],
+        subjects: [
+          {
+            id: 'mtis_l2_attendance',
+            name: 'Attendance',
+            targetWeight: 100,
+            midtermTargetWeight: 0,
+            finalTargetWeight: 0,
+            categories: [
+              {
+                id: 'mtis_l2_att_main',
+                name: 'Attendance',
+                weight: 100,
+                itemCount: 1,
+                itemMaxScores: [100],
+                midtermWeight: 0,
+                finalWeight: 0,
+              }
+            ]
+          },
+          {
+            id: 'mtis_l2_english',
+            name: 'English Language Arts',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            categories: [
+              { id: 'mtis_l2_eng_read', name: 'Reading Quiz', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_eng_write', name: 'Writing Project', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_eng_speak', name: 'Listening & Speaking', weight: 10, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_eng_homework', name: 'Classwork & Homework', weight: 10, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_eng_mid', name: 'Midterm Test', weight: 20, itemCount: 1, itemMaxScores: [100], isMidterm: true, midtermWeight: 100, finalWeight: 0 },
+              { id: 'mtis_l2_eng_fin', name: 'Final Test', weight: 30, itemCount: 1, itemMaxScores: [100], isFinal: true, midtermWeight: 0, finalWeight: 100 }
+            ]
+          },
+          {
+            id: 'mtis_l2_math',
+            name: 'Mathematics',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            categories: [
+              { id: 'mtis_l2_math_quiz', name: 'Weekly Quizzes', weight: 20, itemCount: 5, itemMaxScores: [100, 100, 100, 100, 100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_math_class', name: 'Class Activities', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_math_hw', name: 'Homework', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_math_mid', name: 'Midterm Exam', weight: 20, itemCount: 1, itemMaxScores: [100], isMidterm: true, midtermWeight: 100, finalWeight: 0 },
+              { id: 'mtis_l2_math_fin', name: 'Final Exam', weight: 30, itemCount: 1, itemMaxScores: [100], isFinal: true, midtermWeight: 0, finalWeight: 100 }
+            ]
+          },
+          {
+            id: 'mtis_l2_science',
+            name: 'Science',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            categories: [
+              { id: 'mtis_l2_sci_quiz', name: 'Science Quizzes', weight: 20, itemCount: 2, itemMaxScores: [100, 100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_sci_lab', name: 'Lab Reports', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_sci_proj', name: 'Science Project', weight: 15, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_sci_mid', name: 'Midterm Exam', weight: 20, itemCount: 1, itemMaxScores: [100], isMidterm: true, midtermWeight: 100, finalWeight: 0 },
+              { id: 'mtis_l2_sci_fin', name: 'Final Exam', weight: 30, itemCount: 1, itemMaxScores: [100], isFinal: true, midtermWeight: 0, finalWeight: 100 }
+            ]
+          },
+          {
+            id: 'mtis_l2_social',
+            name: 'Social Studies',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            categories: [
+              { id: 'mtis_l2_soc_classwork', name: 'Classwork', weight: 25, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_soc_proj', name: 'Research Project', weight: 25, itemCount: 1, itemMaxScores: [100], midtermWeight: 0, finalWeight: 0 },
+              { id: 'mtis_l2_soc_mid', name: 'Midterm Exam', weight: 20, itemCount: 1, itemMaxScores: [100], isMidterm: true, midtermWeight: 100, finalWeight: 0 },
+              { id: 'mtis_l2_soc_fin', name: 'Final Exam', weight: 30, itemCount: 1, itemMaxScores: [100], isFinal: true, midtermWeight: 0, finalWeight: 100 }
+            ]
+          }
+        ]
+      }
+    ]
   }
 ];

@@ -9,7 +9,7 @@ import {
   TeacherSettings,
   MANUAL_COLORS,
 } from "../types";
-import { isMidtermCategory, isFinalCategory } from "../lib/categoryUtils";
+import { isMidtermCategory, isFinalCategory, getStudentScoreValue, isSubjectActiveInMode } from "../lib/categoryUtils";
 import { calculateAttendancePercentage } from "../lib/attendanceUtils";
 import { Trash2, ArrowUpDown, EyeOff, Eye, SlidersHorizontal, ClipboardPaste, Wand2, Search, X, ChevronDown, ChevronUp, BarChart3, Award, CheckCircle2, AlertTriangle, BookOpen, Calendar, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -491,17 +491,9 @@ export default function GradeTable({
           }
           return true;
         } else if (resultMode === 'midterm') {
-          if (isMidtermCategory(category)) {
-            const hasOtherMidtermCats = subject.categories.some(c => !isMidtermCategory(c) && c.midtermWeight !== undefined && c.midtermWeight > 0);
-            if (hasOtherMidtermCats) return false;
-          }
-          return (category.midtermWeight !== undefined && category.midtermWeight > 0);
+          return (category.midtermWeight !== undefined && category.midtermWeight > 0) || isMidtermCategory(category);
         } else if (resultMode === 'final') {
-          if (isFinalCategory(category)) {
-            const hasOtherFinalCats = subject.categories.some(c => !isFinalCategory(c) && c.finalWeight !== undefined && c.finalWeight > 0);
-            if (hasOtherFinalCats) return false;
-          }
-          return (category.finalWeight !== undefined && category.finalWeight > 0);
+          return (category.finalWeight !== undefined && category.finalWeight > 0) || isFinalCategory(category);
         }
         return true;
       });
@@ -571,7 +563,7 @@ export default function GradeTable({
               }
             }
           } else {
-            if (settings.showScoreColumns) {
+            if (settings.showScoreColumns && !settings.hideAllRawScores) {
               for (let i = 0; i < category.itemCount; i++) {
                 let cleanLabel = category.itemNames?.[i] || (category.itemCount === 1 ? (resultMode === 'full' ? "Raw" : category.name) : `Item ${i+1}`);
                 
@@ -616,7 +608,7 @@ export default function GradeTable({
                 categoryId: category.id,
                 subjectId: subject.id,
                 itemIndex: -5,
-                label: "WTD",
+                label: (settings.showCategoryWeight !== false && category.weight > 0) ? `WTD (${category.weight}%)` : "WTD",
                 maxScore: 100,
                 isAvg: true,
                 subjectIndex,
@@ -631,7 +623,7 @@ export default function GradeTable({
                 categoryId: category.id,
                 subjectId: subject.id,
                 itemIndex: -5,
-                label: "WTD",
+                label: (settings.showCategoryWeight !== false && category.weight > 0) ? `WTD (${category.weight}%)` : "WTD",
                 maxScore: 100,
                 isAvg: true,
                 subjectIndex,
@@ -782,14 +774,29 @@ export default function GradeTable({
           let hasAnyScore = false;
 
           subject.categories.forEach(cat => {
-            if (mode === 'midterm' && (cat.midtermWeight === undefined || cat.midtermWeight <= 0)) return;
-            if (mode === 'final' && (cat.finalWeight === undefined || cat.finalWeight <= 0)) return;
+            const isMid = isMidtermCategory(cat);
+            const isFin = isFinalCategory(cat);
+            
+            const activeWeight = mode === 'midterm'
+              ? (cat.midtermWeight ?? cat.weight)
+              : mode === 'final'
+                ? (cat.finalWeight ?? cat.weight)
+                : cat.weight;
+
+            // Visibility check inside metric calculation to ensure categoryAvgs are populated for visible columns
+            const isVisibleInMode = mode === 'full' 
+              ? true 
+              : mode === 'midterm' 
+                ? isMid
+                : isFin;
+
+            if (!isVisibleInMode) return;
 
             let catEarned = 0;
             let catMax = 0;
             let hasCatScore = false;
             for (let i = 0; i < cat.itemCount; i++) {
-              const s = student.scores[`${cat.id}_${i}`];
+              const s = getStudentScoreValue(student.scores, cat.id, i, mode, cat);
               if (typeof s === 'number') {
                 catEarned += s;
                 catMax += (cat.itemMaxScores?.[i] || 100);
@@ -803,18 +810,12 @@ export default function GradeTable({
             }
             const catPct = catMax > 0 ? (catEarned / catMax) * 100 : 0;
             
-            const activeWeight = mode === 'midterm'
-              ? (cat.midtermWeight || 0)
-              : mode === 'final'
-                ? (cat.finalWeight || 0)
-                : cat.weight;
-
             if (resultMode === 'full' || mode === resultMode) {
               categoryAvgs[cat.id] = catPct;
               categoryAvgs[`${cat.id}_weighted`] = (catPct / 100) * activeWeight;
             }
 
-            if (hasCatScore) {
+            if (hasCatScore && activeWeight > 0) {
               points += (catPct / 100) * activeWeight;
               weight += activeWeight;
             }
@@ -826,6 +827,10 @@ export default function GradeTable({
 
         let subjectPercentage = 0;
         let hasSubjectScore = false;
+
+        // Always populate category averages for ALL categories when in full mode 
+        // to ensure WTD columns are not zero for non-exam categories (like quizzes)
+        const fullResultRaw = calculateModePct('full');
 
         const midKey = `exam_midterm_${subject.id}_-1`;
         const finalKey = `exam_final_${subject.id}_-1`;
@@ -854,26 +859,61 @@ export default function GradeTable({
         if (resultMode === 'midterm') {
           subjectPercentage = midResult;
           hasSubjectScore = hasMidScore || subject.categories.some(cat => {
-            if (cat.midtermWeight === undefined || cat.midtermWeight <= 0) return false;
+            if ((cat.midtermWeight === undefined || cat.midtermWeight <= 0) && !isMidtermCategory(cat)) return false;
             for (let i = 0; i < cat.itemCount; i++) {
-              if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
+              if (typeof getStudentScoreValue(student.scores, cat.id, i, 'midterm', cat) === 'number') return true;
             }
             return false;
           });
         } else if (resultMode === 'final') {
           subjectPercentage = finalResult;
           hasSubjectScore = hasFinalScore || subject.categories.some(cat => {
-            if (cat.finalWeight === undefined || cat.finalWeight <= 0) return false;
+            if ((cat.finalWeight === undefined || cat.finalWeight <= 0) && !isFinalCategory(cat)) return false;
             for (let i = 0; i < cat.itemCount; i++) {
-              if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
+              if (typeof getStudentScoreValue(student.scores, cat.id, i, 'final', cat) === 'number') return true;
             }
             return false;
           });
         } else {
-          subjectPercentage = (midResult * (midWeight / 100)) + (finalResult * (finalWeight / 100));
+          // COMPREHENSIVE TERMLY RESULT CALCULATION
+          // We combine Midterm result, Final result, and any "Other" categories (like Quizzes)
+          // based on their individual weights.
+          
+          const midCats = subject.categories.filter(isMidtermCategory);
+          const finalCats = subject.categories.filter(isFinalCategory);
+          const otherCats = subject.categories.filter(cat => !isMidtermCategory(cat) && !isFinalCategory(cat));
+          
+          const midWeightTotal = midCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+          const finalWeightTotal = finalCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+          const otherWeightTotal = otherCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+          
+          let weightedSum = 0;
+          let totalWeightUsed = 0;
+          
+          // 1. Midterm Contribution (Respected Manual Overrides)
+          if (midWeightTotal > 0) {
+            weightedSum += (midResult / 100) * midWeightTotal;
+            totalWeightUsed += midWeightTotal;
+          }
+          
+          // 2. Final Contribution (Respected Manual Overrides)
+          if (finalWeightTotal > 0) {
+            weightedSum += (finalResult / 100) * finalWeightTotal;
+            totalWeightUsed += finalWeightTotal;
+          }
+          
+          // 3. Other Categories (Quizzes, Participation, etc.)
+          otherCats.forEach(cat => {
+            const catPct = categoryAvgs[cat.id] ?? 0;
+            weightedSum += (catPct / 100) * cat.weight;
+            totalWeightUsed += cat.weight;
+          });
+          
+          subjectPercentage = totalWeightUsed > 0 ? (weightedSum / totalWeightUsed) * 100 : 0;
+          
           hasSubjectScore = hasMidScore || hasFinalScore || subject.categories.some(cat => {
             for (let i = 0; i < cat.itemCount; i++) {
-              if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
+              if (typeof getStudentScoreValue(student.scores, cat.id, i, 'full', cat) === 'number') return true;
             }
             return false;
           });
@@ -908,12 +948,15 @@ export default function GradeTable({
         subjectScores[`${subject.id}_pct`] = subjectPercentage;
 
         const divideByAll = settings?.divideByAllSubjects !== false;
+        const isActive = isSubjectActiveInMode(subject, resultMode);
 
-        if (divideByAll || hasSubjectScore) {
-          totalWeightSum += subjectTargetWeight;
-        }
-        if (hasSubjectScore) {
-          totalWeightedSum += subjectScores[subject.id];
+        if (isActive) {
+          if (divideByAll || hasSubjectScore) {
+            totalWeightSum += subjectTargetWeight;
+          }
+          if (hasSubjectScore) {
+            totalWeightedSum += subjectScores[subject.id];
+          }
         }
       });
       
@@ -1107,7 +1150,7 @@ export default function GradeTable({
             >
               Sex
             </th>
-            {resultMode === 'full' && (
+             {resultMode === 'full' && level.subjects.length > 0 && (
               <th
                 rowSpan={resultMode === 'full' ? 3 : 2}
                 className={`px-1 py-2 font-bold border-r ${gridStyles.headerBorderClass} text-center w-16 text-[10px]`}
@@ -1282,36 +1325,40 @@ export default function GradeTable({
                 </th>
               );
             })}
-            <th
-              rowSpan={resultMode === 'full' ? 3 : 2}
-              className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center shadow-[-1px_0_0_0_#cbd5e1] cursor-pointer hover:bg-blue-100 transition-colors`}
-              onClick={() => handleSort("finalScore")}
-            >
-              <div className="flex items-center justify-center gap-1">
-                {resultMode === 'midterm' ? 'MID AVG' : (resultMode === 'final' ? 'FINAL AVG' : 'TOTAL AVG')} <ArrowUpDown className="w-3 h-3 text-blue-400" />
-              </div>
-            </th>
-            <th
-              rowSpan={resultMode === 'full' ? 3 : 2}
-              className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center cursor-pointer hover:bg-blue-100 transition-colors`}
-              onClick={() => handleSort("rank")}
-            >
-              <div className="flex items-center justify-center gap-1">
-                RANK <ArrowUpDown className="w-3 h-3 text-blue-400" />
-              </div>
-            </th>
-            <th
-              rowSpan={resultMode === 'full' ? 3 : 2}
-              className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center`}
-            >
-              GRADE
-            </th>
-            <th
-              rowSpan={resultMode === 'full' ? 3 : 2}
-              className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center`}
-            >
-              STATUS
-            </th>
+            {level.subjects.length > 0 && (
+              <>
+                <th
+                  rowSpan={resultMode === 'full' ? 3 : 2}
+                  className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center shadow-[-1px_0_0_0_#cbd5e1] cursor-pointer hover:bg-blue-100 transition-colors`}
+                  onClick={() => handleSort("finalScore")}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    {resultMode === 'midterm' ? 'MID AVG' : (resultMode === 'final' ? 'FINAL AVG' : 'TOTAL AVG')} <ArrowUpDown className="w-3 h-3 text-blue-400" />
+                  </div>
+                </th>
+                <th
+                  rowSpan={resultMode === 'full' ? 3 : 2}
+                  className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center cursor-pointer hover:bg-blue-100 transition-colors`}
+                  onClick={() => handleSort("rank")}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    RANK <ArrowUpDown className="w-3 h-3 text-blue-400" />
+                  </div>
+                </th>
+                <th
+                  rowSpan={resultMode === 'full' ? 3 : 2}
+                  className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center`}
+                >
+                  GRADE
+                </th>
+                <th
+                  rowSpan={resultMode === 'full' ? 3 : 2}
+                  className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center`}
+                >
+                  STATUS
+                </th>
+              </>
+            )}
             <th
               rowSpan={resultMode === 'full' ? 3 : 2}
               className={`px-4 py-3 font-bold text-center border-l ${gridStyles.headerBorderClass} w-24`}
@@ -1538,9 +1585,8 @@ export default function GradeTable({
               let possible = 0;
               itemCols.forEach(ic => {
                 if (ic.isHidden || ic.isAvg || ic.itemIndex < 0) return;
-                const scoreKey = `${ic.categoryId}_${ic.itemIndex}`;
-                const score = student.scores[scoreKey];
-                if (score !== undefined && score !== null && score !== "") {
+                const score = getStudentScoreValue(student.scores, ic.categoryId, ic.itemIndex, resultMode, level.subjects.find(s => s.id === ic.subjectId)?.categories.find(c => c.id === ic.categoryId));
+                if (score !== undefined && score !== null) {
                   const scoreNum = Number(score);
                   if (!isNaN(scoreNum)) {
                     earned += scoreNum;
@@ -1567,18 +1613,20 @@ export default function GradeTable({
                   style={{ ...currentPaper.customStyle, left: "2.5rem" }}
                 >
                   <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => toggleStudentExpansion(student.id)}
-                      className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-blue-600 transition-all cursor-pointer inline-flex items-center justify-center shrink-0"
-                      title="Toggle Student Performance Summary"
-                    >
-                      {expandedStudentIds.includes(student.id) ? (
-                        <ChevronUp className="w-3.5 h-3.5" />
-                      ) : (
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      )}
-                    </button>
+                    {level.subjects.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => toggleStudentExpansion(student.id)}
+                        className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-blue-600 transition-all cursor-pointer inline-flex items-center justify-center shrink-0"
+                        title="Toggle Student Performance Summary"
+                      >
+                        {expandedStudentIds.includes(student.id) ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    )}
                     <input
                       type="text"
                       id={`grid-input-${index}-name`}
@@ -1591,7 +1639,7 @@ export default function GradeTable({
                       className={`w-full bg-transparent border border-transparent focus:bg-white focus:ring-1 focus:ring-blue-100 rounded px-1.5 py-0.5 font-black text-slate-900 transition-all outline-none truncate text-sm disabled:opacity-50 ${settings?.hideStudentNames ? 'filter blur-[3px] select-none' : ''}`}
                       placeholder="Enter Name"
                     />
-                    {!student.isHidden && metrics?.categoryAvgs && (
+                    {!student.isHidden && level.subjects.length > 0 && metrics?.categoryAvgs && (
                       <TrendLine data={level.subjects.flatMap(s => s.categories.map(c => metrics.categoryAvgs[c.id]))} />
                     )}
                   </div>
@@ -1660,8 +1708,7 @@ export default function GradeTable({
                   const theme = ic.theme;
 
                   // FIND THE ACTUAL SCORE
-                  const scoreKey = `${ic.categoryId}_${ic.itemIndex}`;
-                  let scoreValue = student.scores[scoreKey];
+                  let scoreValue = getStudentScoreValue(student.scores, ic.categoryId, ic.itemIndex, resultMode, level.subjects.find(s => s.id === ic.subjectId)?.categories.find(c => c.id === ic.categoryId));
                   let isManual = true;
 
                   if (resultMode === 'full' && ic.categoryId.startsWith('exam_')) {
@@ -1848,7 +1895,7 @@ export default function GradeTable({
                             onChange={(e) =>
                               onUpdateStudent(
                                 student.id,
-                                isMid ? 'exam_midterm' : 'exam_final',
+                                isMid ? `exam_midterm_${ic.subjectId}` : `exam_final_${ic.subjectId}`,
                                 -1,
                                 e.target.value === "" ? undefined : Number(e.target.value)
                               )
@@ -1913,59 +1960,63 @@ export default function GradeTable({
                   );
                 })}
 
-                {(() => {
-                  const style = getManualStyle('avg', scoreColor, scoreBg);
-                  return (
-                    <td className={`px-2 py-2 ${style.bgClass} font-bold text-center border-l border-b ${style.borderClass} shadow-[-1px_0_0_0_#eff6ff] text-sm ${style.textClass}`}>
+                {level.subjects.length > 0 && (
+                  <>
+                    {(() => {
+                      const style = getManualStyle('avg', scoreColor, scoreBg);
+                      return (
+                        <td className={`px-2 py-2 ${style.bgClass} font-bold text-center border-l border-b ${style.borderClass} shadow-[-1px_0_0_0_#eff6ff] text-sm ${style.textClass}`}>
+                          <div className="flex flex-col items-center">
+                            <span title="Average performance (100% scale)">
+                              {metrics.performancePct.toFixed(1)}
+                            </span>
+                          </div>
+                        </td>
+                      );
+                    })()}
+                    <td className={`px-2 py-2 ${scoreBg} font-bold text-slate-700 text-center border-l border-b ${gridStyles.totalBorderClass} text-sm`}>
+                      {rank}
+                    </td>
+                    <td className={`px-2 py-2 ${scoreBg} text-center border-l border-b ${gridStyles.totalBorderClass} min-w-[70px]`}>
                       <div className="flex flex-col items-center">
-                        <span title="Average performance (100% scale)">
-                          {metrics.performancePct.toFixed(1)}
+                        <span
+                          className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-black border shadow-sm ${
+                            grade.startsWith("A")
+                              ? "bg-purple-100 text-purple-800 border-purple-200"
+                              : grade.startsWith("B")
+                                ? "bg-blue-100 text-blue-800 border-blue-200"
+                                : grade.startsWith("C")
+                                  ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                                  : grade.startsWith("D")
+                                    ? "bg-amber-100 text-amber-800 border-amber-200"
+                                    : grade.startsWith("E")
+                                      ? "bg-orange-100 text-orange-800 border-orange-200"
+                                      : grade.startsWith("P") || grade.toLowerCase().includes("pass")
+                                        ? "bg-green-100 text-green-800 border-green-200"
+                                        : "bg-red-100 text-red-800 border-red-200"
+                          }`}
+                        >
+                          {grade}
                         </span>
                       </div>
                     </td>
-                  );
-                })()}
-                <td className={`px-2 py-2 ${scoreBg} font-bold text-slate-700 text-center border-l border-b ${gridStyles.totalBorderClass} text-sm`}>
-                  {rank}
-                </td>
-                <td className={`px-2 py-2 ${scoreBg} text-center border-l border-b ${gridStyles.totalBorderClass} min-w-[70px]`}>
-                  <div className="flex flex-col items-center">
-                    <span
-                      className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-black border shadow-sm ${
-                        grade.startsWith("A")
-                          ? "bg-purple-100 text-purple-800 border-purple-200"
-                          : grade.startsWith("B")
-                            ? "bg-blue-100 text-blue-800 border-blue-200"
-                            : grade.startsWith("C")
-                              ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                              : grade.startsWith("D")
-                                ? "bg-amber-100 text-amber-800 border-amber-200"
-                                : grade.startsWith("E")
-                                  ? "bg-orange-100 text-orange-800 border-orange-200"
-                                  : grade.startsWith("P") || grade.toLowerCase().includes("pass")
-                                    ? "bg-green-100 text-green-800 border-green-200"
-                                    : "bg-red-100 text-red-800 border-red-200"
-                      }`}
-                    >
-                      {grade}
-                    </span>
-                  </div>
-                </td>
-                <td className={`px-2 py-2 ${scoreBg} text-center border-l border-b ${gridStyles.totalBorderClass} min-w-[70px]`}>
-                  <div className="flex flex-col items-center">
-                    <span
-                      className={`text-xs font-black px-2 py-1 rounded border ${
-                        status.toLowerCase().includes("pass")
-                          ? "text-emerald-700 bg-emerald-50 border-emerald-100"
-                          : status.toLowerCase().includes("repeat")
-                            ? "text-orange-700 bg-orange-50 border-orange-100"
-                            : "text-red-600 bg-red-50 border-red-100"
-                      }`}
-                    >
-                      {status}
-                    </span>
-                  </div>
-                </td>
+                    <td className={`px-2 py-2 ${scoreBg} text-center border-l border-b ${gridStyles.totalBorderClass} min-w-[70px]`}>
+                      <div className="flex flex-col items-center">
+                        <span
+                          className={`text-xs font-black px-2 py-1 rounded border ${
+                            status.toLowerCase().includes("pass")
+                              ? "text-emerald-700 bg-emerald-50 border-emerald-100"
+                              : status.toLowerCase().includes("repeat")
+                                ? "text-orange-700 bg-orange-50 border-orange-100"
+                                : "text-red-600 bg-red-50 border-red-100"
+                          }`}
+                        >
+                          {status}
+                        </span>
+                      </div>
+                    </td>
+                  </>
+                )}
                 <td className={`px-1 py-2 text-center border-l border-b ${gridStyles.bodyBorderClass} transition-colors`}>
                   <div className="flex items-center justify-center gap-1.5">
                     {student.isHidden ? (

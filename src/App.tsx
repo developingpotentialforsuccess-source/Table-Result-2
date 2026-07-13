@@ -31,6 +31,7 @@ import {
   Bell,
   RefreshCw,
   Clipboard,
+  Share2,
 } from "lucide-react";
 import {
   Level,
@@ -74,6 +75,8 @@ import {
   deleteLevel,
   getLocalStudents,
 } from "./lib/firestoreUtils";
+import { isMidtermCategory, isFinalCategory } from "./lib/categoryUtils";
+import { googleSignIn as driveSignIn, exportToGoogleSheets, getAccessToken } from "./lib/googleDrive";
 
 const DEFAULT_SETTINGS: TeacherSettings = {
   colorMode: 'monochrome',
@@ -84,15 +87,15 @@ const DEFAULT_SETTINGS: TeacherSettings = {
   rowIndent: false,
   showPointsInResult: false,
   showScoreColumns: true,
-  showAvgColumns: true,
-  showWtdColumns: false,
+  showAvgColumns: false,
+  showWtdColumns: true,
   autoBackup: true,
   scoreColor: 'black',
   treatBlanksAsZero: true,
   keepAvgOnHide: true,
   keepWtdOnHide: false,
   divideByAllSubjects: true,
-  resultDisplayMode: 'avg',
+  resultDisplayMode: 'wtd',
   showCategoryWeight: false,
   showCategoryHideIcon: false,
   completelyHideHiddenCategories: true,
@@ -412,6 +415,42 @@ export default function App() {
   const [showRecycleBin, setShowRecycleBin] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExportingToDrive, setIsExportingToDrive] = useState(false);
+  const [driveExportError, setDriveExportError] = useState<string | null>(null);
+  const [driveExportSuccess, setDriveExportSuccess] = useState(false);
+
+  const handleExportToGoogleDrive = async () => {
+    if (!currentRecord || !currentLevel) return;
+    
+    setIsExportingToDrive(true);
+    setDriveExportError(null);
+    setDriveExportSuccess(false);
+    
+    try {
+      // Ensure we have an access token with Drive scopes
+      let token = getAccessToken();
+      if (!token) {
+        const result = await driveSignIn();
+        token = result?.accessToken || null;
+      }
+      
+      if (!token) throw new Error("Failed to connect to Google Drive");
+      
+      await exportToGoogleSheets(currentRecord, currentLevel, students);
+      
+      const newSyncTime = new Date().toISOString();
+      const currentSettings = currentRecord.settings || DEFAULT_SETTINGS;
+      handleUpdateSettings({ ...currentSettings, lastDriveSync: newSyncTime });
+      
+      setDriveExportSuccess(true);
+      setTimeout(() => setDriveExportSuccess(false), 5000);
+    } catch (err: any) {
+      console.error("Drive export failed:", err);
+      setDriveExportError(err.message || "Failed to export to Google Drive");
+    } finally {
+      setIsExportingToDrive(false);
+    }
+  };
   const [activeView, setActiveView] = useState<'grades' | 'attendance'>('grades');
 
   const [paperStyle, setPaperStyle] = useState<string>(() => {
@@ -487,7 +526,7 @@ export default function App() {
   const [newClassName, setNewClassName] = useState("");
   const [newTermName, setNewTermName] = useState("Term 1, 2026");
   const [newTeacherName, setNewTeacherName] = useState("");
-  const [newLevelId, setNewLevelId] = useState("");
+  const [newLevelId, setNewLevelId] = useState("empty_no_subjects");
   const [newAccessCode, setNewAccessCode] = useState("");
   const [newClassError, setNewClassError] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -779,6 +818,13 @@ export default function App() {
   const currentRecord = useMemo(() => {
     return activeClasses.find((cr) => cr.id === currentRecordId) || activeClasses[0];
   }, [activeClasses, currentRecordId]);
+
+  const filteredTemplates = useMemo(() => {
+    if (currentRecord?.settings?.hideSystemTemplates) {
+      return savedTemplates.filter(t => t.authorName !== 'System');
+    }
+    return savedTemplates;
+  }, [savedTemplates, currentRecord?.settings?.hideSystemTemplates]);
   const currentLevel =
     levels.find((l) => l.id === currentRecord?.levelId) || levels[0];
   const totalWeight = currentLevel ? getLevelTotalWeight(currentLevel) : 0;
@@ -911,7 +957,6 @@ export default function App() {
 
   const handleConfirmCreateClass = async () => {
     if (!user || isCreatingClass) return;
-    if (levels.length === 0 && classCreationSource === "scratch") return;
     if (!newClassName.trim()) {
       setNewClassError("Class Name is required.");
       return;
@@ -928,9 +973,42 @@ export default function App() {
       const cleanAccessCode = newAccessCode.trim().toLowerCase();
       const newClassId = Math.random().toString(36).substr(2, 9);
       
-      let resolvedLevelId = newLevelId || (levels[0]?.id || "");
+      let resolvedLevelId = "";
 
-      if (classCreationSource === "template") {
+      if (classCreationSource === "scratch") {
+        if (newLevelId === "empty_no_subjects" || !newLevelId) {
+          const newEmptyLevelId = "level_empty_" + Math.random().toString(36).substr(2, 9);
+          const newEmptyLevel: Level = {
+            id: newEmptyLevelId,
+            name: newClassName.trim() + " Profile",
+            subjects: [], // COMPLETELY EMPTY! No table, no columns!
+            gradingScale: DEFAULT_GRADING_SCALE,
+            statusScale: [
+              { grade: 'Pass', minScore: 70 },
+              { grade: 'Repeat', minScore: 60 },
+              { grade: 'Fail +', minScore: 0 },
+            ],
+            attendanceWeight: 0,
+          };
+          await saveLevel(user.uid, newEmptyLevel);
+          resolvedLevelId = newEmptyLevelId;
+        } else {
+          // They chose an existing level. Make a clean copy of it so changes don't leak across classes
+          const chosenLvl = levels.find(l => l.id === newLevelId);
+          if (chosenLvl) {
+            const newCopiedLevelId = "level_copy_" + Math.random().toString(36).substr(2, 9);
+            const copiedLevel: Level = {
+              ...chosenLvl,
+              id: newCopiedLevelId,
+              name: newClassName.trim() + " Profile"
+            };
+            await saveLevel(user.uid, copiedLevel);
+            resolvedLevelId = newCopiedLevelId;
+          } else {
+            resolvedLevelId = newLevelId;
+          }
+        }
+      } else if (classCreationSource === "template") {
         if (!selectedTemplateLibraryId) {
           throw new Error("Please select a template from the library.");
         }
@@ -1039,7 +1117,12 @@ export default function App() {
     setTemplateTeacherName(currentRecord.teacherName);
     setTemplateLevelId(currentRecord.levelId);
     setTemplateAccessCode(currentRecord.accessCode || "");
-    setTemplateVerificationCode("");
+    const activeCode = (accessCode || "").trim().toUpperCase();
+    if (["DPS", "DPSS", "BPS", "BPSS"].includes(activeCode)) {
+      setTemplateVerificationCode(activeCode);
+    } else {
+      setTemplateVerificationCode("");
+    }
     setTemplateRosterOption("copy_names");
     setTemplateError("");
     setShowTemplateModal(true);
@@ -1055,8 +1138,9 @@ export default function App() {
       setTemplateError("Access lock code is required to secure this new class.");
       return;
     }
-    if (templateVerificationCode.trim().toLowerCase() !== "dpss") {
-      setTemplateError("Invalid verification code. You must type 'DPSS' to prevent messy templates.");
+    const vCode = templateVerificationCode.trim().toLowerCase();
+    if (vCode !== "dpss" && vCode !== "dps" && vCode !== "bps" && vCode !== "bpss") {
+      setTemplateError("Invalid verification code. You must type 'DPSS' or 'BPS' to prevent messy templates.");
       return;
     }
 
@@ -1256,7 +1340,26 @@ export default function App() {
     const student = students.find(s => s.id === id);
     if (student) {
       const newScores = { ...student.scores };
-      const scoreKey = `${categoryId}_${itemIndex}`;
+      let scoreKey = `${categoryId}_${itemIndex}`;
+
+      // Support midterm/final mode suffixes
+      if (!categoryId.startsWith('exam_')) {
+        if (resultMode === 'midterm') {
+          scoreKey = `${categoryId}_${itemIndex}_midterm`;
+        } else if (resultMode === 'final') {
+          scoreKey = `${categoryId}_${itemIndex}_final`;
+        } else if (resultMode === 'full') {
+          const cat = currentLevel?.subjects
+            .flatMap(s => s.categories)
+            .find(c => c.id === categoryId);
+          if (cat?.isMidterm) {
+            scoreKey = `${categoryId}_${itemIndex}_midterm`;
+          } else if (cat?.isFinal) {
+            scoreKey = `${categoryId}_${itemIndex}_final`;
+          }
+        }
+      }
+
       if (value === undefined || value === null || value === "") {
         delete newScores[scoreKey];
       } else {
@@ -1595,7 +1698,7 @@ export default function App() {
                   onChange={(e) => handleUpdateAccessCode(e.target.value)}
                   className="bg-transparent border-0 focus:ring-0 text-xs w-20 outline-none font-bold text-slate-800 uppercase px-1"
                 />
-                {accessCode.toUpperCase() === "DPS" || accessCode.toUpperCase() === "DPSS" ? (
+                {["DPS", "DPSS", "BPS", "BPSS"].includes(accessCode.toUpperCase().trim()) ? (
                   <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded ml-1 animate-pulse">
                     ADMIN
                   </span>
@@ -1925,6 +2028,36 @@ export default function App() {
                           <FileText className="w-4 h-4 text-red-600" /> All PDF Results (Mid + Final + Full)
                         </button>
                       </div>
+
+                      <div className="p-2 border-t border-slate-100 bg-slate-50/50">
+                        <p className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Google Drive</p>
+                        <button
+                          onClick={handleExportToGoogleDrive}
+                          disabled={isExportingToDrive}
+                          className={`w-full text-left flex items-center gap-2 px-2 py-2.5 text-sm rounded-lg transition-all border ${
+                            isExportingToDrive 
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-wait'
+                              : driveExportSuccess
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'text-slate-700 bg-white hover:bg-blue-50 hover:text-blue-700 border-slate-200 hover:border-blue-200 cursor-pointer'
+                          }`}
+                        >
+                          {isExportingToDrive ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : driveExportSuccess ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <FolderOpen className="w-4 h-4 text-emerald-600" />
+                          )}
+                          <span className="font-bold">
+                            {isExportingToDrive ? "Exporting..." : driveExportSuccess ? "Saved to Drive!" : "Export to Drive"}
+                          </span>
+                        </button>
+                        {driveExportError && (
+                          <p className="mt-1 px-2 text-[10px] font-medium text-red-500">{driveExportError}</p>
+                        )}
+                        <p className="mt-1 px-2 text-[9px] text-slate-400 font-medium">Saves as Google Spreadsheet</p>
+                      </div>
                     </div>
                   </>
                 )}
@@ -2042,6 +2175,21 @@ export default function App() {
               />
             </div>
           </div>
+          {(accessCode.trim().toLowerCase() === "dps" || accessCode.trim().toLowerCase() === "dpss") && (
+            <div className="flex items-center">
+              <button 
+                onClick={() => {
+                   const url = window.location.href;
+                   navigator.clipboard.writeText(url);
+                   alert("App link copied to clipboard! You can share this link with others.");
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                <Share2 className="w-4 h-4" />
+                Share
+              </button>
+            </div>
+          )}
           <div className="flex-1 min-w-[140px] sm:min-w-[200px]">
             <label className="block text-xs font-medium text-slate-500 mb-1">
               Level Profile
@@ -2054,7 +2202,11 @@ export default function App() {
                 }
                 className="w-full text-base font-semibold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent px-1 py-0.5 transition-colors cursor-pointer"
               >
-                {levels.map((l) => (
+                {levels.filter(lvl => 
+                  lvl.id === currentRecord.levelId || 
+                  lvl.subjects.length > 0 || 
+                  classRecords.filter(c => !c.isDeleted).map(c => c.levelId).includes(lvl.id)
+                ).map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
                   </option>
@@ -2189,7 +2341,11 @@ export default function App() {
                       onChange={(e) => setTemplateLevelId(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
                     >
-                      {levels.map((l) => (
+                      {levels.filter(lvl => 
+                        lvl.id === templateLevelId ||
+                        lvl.subjects.length > 0 || 
+                        classRecords.filter(c => !c.isDeleted).map(c => c.levelId).includes(lvl.id)
+                      ).map((l) => (
                         <option key={l.id} value={l.id}>
                           {l.name}
                         </option>
@@ -2212,13 +2368,13 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                    Template Code Verification (Type 'DPSS')
+                    Template Code Verification (Type 'DPSS' or 'BPS')
                   </label>
                   <input
                     type="text"
                     value={templateVerificationCode}
                     onChange={(e) => setTemplateVerificationCode(e.target.value)}
-                    placeholder="Enter DPSS or dpss to verify"
+                    placeholder="Enter DPSS or BPS to verify"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-bold placeholder:normal-case placeholder:font-normal"
                   />
                 </div>
@@ -2481,7 +2637,7 @@ export default function App() {
                         setSelectedTemplateLibraryId(libId);
                         setSelectedLevelFromLibraryId("");
                         if (libId) {
-                          const chosenTemplate = savedTemplates.find((t) => t.id === libId);
+                          const chosenTemplate = filteredTemplates.find((t) => t.id === libId);
                           if (chosenTemplate) {
                             setNewClassName(chosenTemplate.name + " Class");
                             setNewTermName("Term 1, 2026");
@@ -2496,7 +2652,7 @@ export default function App() {
                       className="w-full px-3 py-2 text-xs bg-white border border-purple-200 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/20 rounded-lg outline-none font-bold text-slate-700 cursor-pointer"
                     >
                       <option value="">-- Choose program from library --</option>
-                      {savedTemplates.map((template) => (
+                      {filteredTemplates.filter(t => t.levels.length > 0).map((template) => (
                         <option key={template.id} value={template.id}>
                           {template.name} ({template.authorName || "Teacher"})
                         </option>
@@ -2509,7 +2665,7 @@ export default function App() {
                         onChange={(e) => {
                           const lvlId = e.target.value;
                           setSelectedLevelFromLibraryId(lvlId);
-                          const program = savedTemplates.find((t) => t.id === selectedTemplateLibraryId);
+                          const program = filteredTemplates.find((t) => t.id === selectedTemplateLibraryId);
                           const chosenLevel = program?.levels.find((l) => l.id === lvlId);
                           if (chosenLevel) {
                             setNewLevelId(chosenLevel.id);
@@ -2519,7 +2675,7 @@ export default function App() {
                         className="w-full px-3 py-2 mt-2 text-xs bg-white border border-purple-200 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/20 rounded-lg outline-none font-bold text-slate-700 cursor-pointer"
                       >
                         <option value="">-- Choose level --</option>
-                        {(savedTemplates.find((t) => t.id === selectedTemplateLibraryId)?.levels || []).map((lvl) => (
+                        {(filteredTemplates.find((t) => t.id === selectedTemplateLibraryId)?.levels || []).map((lvl) => (
                           <option key={lvl.id} value={lvl.id}>
                             {lvl.name}
                           </option>
@@ -2598,9 +2754,14 @@ export default function App() {
                       onChange={(e) => setNewLevelId(e.target.value)}
                       className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 rounded-xl outline-none font-bold text-slate-700 transition-all cursor-pointer"
                     >
-                      {levels.map((lvl) => (
+                      <option value="empty_no_subjects">Empty Level Profile (No Table, No Columns)</option>
+                      {levels.filter(lvl => 
+                        lvl.id === newLevelId ||
+                        lvl.subjects.length > 0 || 
+                        classRecords.filter(c => !c.isDeleted).map(c => c.levelId).includes(lvl.id)
+                      ).map((lvl) => (
                         <option key={lvl.id} value={lvl.id}>
-                          {lvl.name}
+                          {lvl.name} (Copy subjects & grading scale)
                         </option>
                       ))}
                     </select>
@@ -2754,6 +2915,32 @@ export default function App() {
                 </button>
               )}
 
+              {/* Compact View Toggle - Repositioned between Attendance and Mode */}
+              <button
+                onClick={() => handleUpdateSettings({
+                  ...currentRecord!.settings!,
+                  showScoreColumns: !currentRecord!.settings!.showScoreColumns
+                })}
+                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm ${
+                  currentRecord?.settings?.showScoreColumns 
+                    ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-50" 
+                    : "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
+                }`}
+                title={currentRecord?.settings?.showScoreColumns ? "Switch to Compact View (Hide item columns)" : "Switch to Detailed View (Show item columns)"}
+              >
+                {currentRecord?.settings?.showScoreColumns ? (
+                  <>
+                    <Minimize className="w-3.5 h-3.5" />
+                    Compact View
+                  </>
+                ) : (
+                  <>
+                    <Maximize className="w-3.5 h-3.5" />
+                    Detailed View
+                  </>
+                )}
+              </button>
+
               {/* Repositioned Mode Select */}
               <div className={`hidden sm:flex items-center border rounded-lg px-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all ml-2 ${
                 resultMode === 'full' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
@@ -2830,7 +3017,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto bg-transparent relative">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-transparent relative">
             {!hasAccessToCurrent && (
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-md animate-in fade-in zoom-in-95 duration-300">
                 <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full text-center">
@@ -2849,7 +3036,15 @@ export default function App() {
               </div>
             )}
             {currentTab === "dashboard" ? (
-              <Dashboard currentRecord={currentRecord} students={students} currentLevel={currentLevel} resultMode={resultMode} />
+              <Dashboard 
+                currentRecord={currentRecord} 
+                students={students} 
+                currentLevel={currentLevel} 
+                resultMode={resultMode}
+                settings={currentRecord?.settings || DEFAULT_SETTINGS}
+                onSyncDrive={handleExportToGoogleDrive}
+                isSyncing={isExportingToDrive}
+              />
             ) : activeView === 'attendance' ? (
               <AttendanceTracker 
                 students={students}
@@ -2860,7 +3055,7 @@ export default function App() {
                 onUpdateAttendanceRecord={handleUpdateAttendanceRecord}
                 onMarkAllPresent={handleMarkAllPresent}
               />
-            ) : currentLevel.subjects.length > 0 ? (
+            ) : (
               <GradeTable
                 level={currentLevel}
                 onUpdateLevel={handleUpdateLevel}
@@ -2875,25 +3070,6 @@ export default function App() {
                 gridLineLevel={gridLineLevel}
                 settings={currentRecord.settings || DEFAULT_SETTINGS}
               />
-            ) : (
-              <div className="p-12 text-center flex flex-col items-center justify-center min-h-full">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                  <Settings className="w-8 h-8 text-slate-400" />
-                </div>
-                <h3 className="text-lg font-medium text-slate-800 mb-1">
-                  No Subjects Configured
-                </h3>
-                <p className="text-slate-500 mb-4 max-w-sm">
-                  Open Level Config to define subjects, categories, and their
-                  weights before adding student grades.
-                </p>
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                >
-                  Configure Level
-                </button>
-              </div>
             )}
           </div>
         </div>
