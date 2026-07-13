@@ -595,17 +595,16 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                               />
                             </div>
                             <div className="w-20 relative flex flex-col items-center gap-1">
-                              <button 
-                                type="button"
-                                className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-0.5 cursor-help hover:text-blue-600 transition-colors bg-transparent border-none p-0" 
-                                title="Click for a short explanation of 'Full Wt %'"
+                              <span 
+                                className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-0.5 cursor-help hover:text-blue-600 transition-colors" 
+                                title="This is the weight (percentage) of this category toward the final Full Term grade (1-100%). Click for more info."
                                 onClick={() => {
-                                  alert("FULL WT % (Weighted Total Percentage):\n\nThis defines how much this specific category (e.g. Quizzes) contributes to the student's OVERALL grade for this subject in the 'Full Term' view.\n\nExample: If Quizzes is set to 5%, then even if a student gets 100% in all quizzes, they only earn 5 points toward their total grade for this subject.");
+                                  alert("FULL WT %: This is the weight (percentage) of this category toward the final Full Term grade. For example, if it's 10%, this category accounts for 10% of the total score for this subject in the Full Term view.");
                                 }}
                               >
                                 {isLocked && <Lock className="w-2.5 h-2.5 text-slate-400" />}
                                 Full Wt %
-                              </button>
+                              </span>
                               <div className="relative w-full">
                                 <input
                                   type="number"

@@ -563,7 +563,7 @@ export default function GradeTable({
               }
             }
           } else {
-            if (settings.showScoreColumns && !settings.hideAllRawScores) {
+            if (settings.showScoreColumns) {
               for (let i = 0; i < category.itemCount; i++) {
                 let cleanLabel = category.itemNames?.[i] || (category.itemCount === 1 ? (resultMode === 'full' ? "Raw" : category.name) : `Item ${i+1}`);
                 
@@ -608,7 +608,7 @@ export default function GradeTable({
                 categoryId: category.id,
                 subjectId: subject.id,
                 itemIndex: -5,
-                label: (settings.showCategoryWeight !== false && category.weight > 0) ? `WTD (${category.weight}%)` : "WTD",
+                label: "WTD",
                 maxScore: 100,
                 isAvg: true,
                 subjectIndex,
@@ -623,7 +623,7 @@ export default function GradeTable({
                 categoryId: category.id,
                 subjectId: subject.id,
                 itemIndex: -5,
-                label: (settings.showCategoryWeight !== false && category.weight > 0) ? `WTD (${category.weight}%)` : "WTD",
+                label: "WTD",
                 maxScore: 100,
                 isAvg: true,
                 subjectIndex,

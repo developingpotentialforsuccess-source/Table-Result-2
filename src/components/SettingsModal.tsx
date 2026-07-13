@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Save, Copy, FileText, Database, Trash2, Edit2, Plus, Bell, RefreshCw, Upload, Download, FolderOpen, Lock } from 'lucide-react';
+import { X, User, Save, Copy, FileText, Database, Trash2, Edit2, Plus, Bell, RefreshCw, Upload, Download } from 'lucide-react';
 import { Level, Subject, PAPER_STYLES, WALLPAPERS, TeacherSettings, MANUAL_COLORS, ClassRecord } from '../types';
 import LevelSettings from './LevelSettings';
 import { SYSTEM_TEMPLATES } from '../lib/templates';
 import { auth, db, googleProvider, isFirebaseConfigured } from '../lib/firebase';
-import { signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
 import { exportFullBackup, importFullBackup } from '../lib/backupUtils';
-import { googleSignIn as driveSignIn, saveBackupToDrive, getAccessToken } from '../lib/googleDrive';
 
 interface Props {
   level: Level;
@@ -134,17 +133,11 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
       return;
     }
     if (!user) return;
-    const code = prompt("Enter verification code to publish this as a template (Type 'SELL' to mark as premium):");
-    if (!code) return;
-    
-    const isPremium = code.trim().toUpperCase() === "SELL";
-    const verification = isPremium ? "dpss" : code.trim().toLowerCase();
-    
-    if (verification !== "dpss" && verification !== "bps") {
-      alert("Invalid verification code. Please contact admin.");
+    const code = prompt("Enter verification code to save a template to the library:");
+    if (!code || code.trim().toLowerCase() !== "dpss") {
+      alert("Invalid verification code. You cannot save templates to the library.");
       return;
     }
-
     const templateName = prompt("Enter template name (e.g., 'Foundation Term 1'):");
     if (!templateName) return;
     
@@ -154,13 +147,9 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
         name: templateName,
         authorId: user.uid,
         authorName: user.displayName || user.email || 'Teacher',
-        levels: levels,
-        isPremium,
-        price: isPremium ? prompt("Enter suggested price (USD):", "9.99") : 0,
-        createdAt: new Date().toISOString()
+        levels: levels
       });
       fetchTemplates();
-      alert(`Template "${templateName}" successfully published to the community!`);
     } catch (e) {
       console.error("Error saving template:", e);
       alert("Failed to save template. Make sure you are signed in.");
@@ -1312,19 +1301,6 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
 
                     <label className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer">
                       <div>
-                        <span className="block text-sm font-bold text-slate-900">Hide All Raw Scores</span>
-                        <span className="block text-[10px] text-slate-500">Hide Item 1, 2, etc. and keep only summaries</span>
-                      </div>
-                      <input 
-                        type="checkbox" 
-                        checked={settings.hideAllRawScores}
-                        onChange={(e) => onUpdateSettings({ ...settings, hideAllRawScores: e.target.checked })}
-                        className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer">
-                      <div>
                         <span className="block text-sm font-bold text-slate-900">Hide Student Names</span>
                         <span className="block text-[10px] text-slate-500">Hide or anonymize names</span>
                       </div>
@@ -1460,15 +1436,6 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                       <p className="text-sm text-slate-500">Save your full level structures to the community library, or load existing ones.</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors border border-slate-200">
-                        <input 
-                          type="checkbox" 
-                          checked={settings.hideSystemTemplates}
-                          onChange={(e) => onUpdateSettings({ ...settings, hideSystemTemplates: e.target.checked })}
-                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-xs font-bold text-slate-600 uppercase tracking-tighter">Hide System Templates</span>
-                      </label>
                       {user && (
                         <button 
                           onClick={async () => {
@@ -1518,18 +1485,12 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                   <div className="mt-6">
                     {!selectedProgramId ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {SYSTEM_TEMPLATES.filter(p => p.levels.length > 0 && (!settings.hideSystemTemplates || p.id === 'saved')).map((program) => (
+                        {SYSTEM_TEMPLATES.filter(p => p.levels.length > 0).map((program) => (
                           <button
                             key={program.id}
                             onClick={() => setSelectedProgramId(program.id)}
-                            className="group bg-white p-8 rounded-3xl border-2 border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center gap-6 relative overflow-hidden"
+                            className="group bg-white p-8 rounded-3xl border-2 border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center gap-6"
                           >
-                            {program.authorName === 'System' && (
-                              <div className="absolute top-0 right-0 p-1.5 bg-blue-50 text-blue-600 rounded-bl-xl border-l border-b border-blue-100 flex items-center gap-1">
-                                <Lock className="w-3 h-3" />
-                                <span className="text-[10px] font-bold uppercase tracking-tighter">System</span>
-                              </div>
-                            )}
                             <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
                               <Database className="w-10 h-10" />
                             </div>
@@ -2110,36 +2071,6 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                   >
                     {backupStatus === 'loading' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                     Download Full Backup (.JSON)
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setBackupStatus('loading');
-                      setBackupMessage('Connecting to Google Drive and uploading backup...');
-                      try {
-                        let token = getAccessToken();
-                        if (!token) {
-                          const result = await driveSignIn();
-                          token = result?.accessToken || null;
-                        }
-                        
-                        if (!token) throw new Error("Failed to connect to Google Drive");
-
-                        const targetUserUid = auth.currentUser?.uid || 'default_teacher';
-                        await saveBackupToDrive(targetUserUid, levels, classRecords);
-                        setBackupStatus('success');
-                        setBackupMessage('Backup successfully saved to your Google Drive!');
-                      } catch (err: any) {
-                        setBackupStatus('error');
-                        setBackupMessage('Failed to save to Drive: ' + (err.message || err));
-                      }
-                    }}
-                    disabled={backupStatus === 'loading'}
-                    className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-emerald-500/10 transition-colors flex items-center justify-center gap-2 cursor-pointer mt-2"
-                  >
-                    {backupStatus === 'loading' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FolderOpen className="w-4 h-4" />}
-                    Save Backup to Google Drive
                   </button>
                 </div>
 

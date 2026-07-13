@@ -115,8 +115,6 @@ export interface TeacherSettings {
   quizNoScoreDays?: number;
   attendanceNoScoreDays?: number;
   hideSystemTemplates?: boolean;
-  hideAllRawScores?: boolean;
-  lastDriveSync?: string;
 }
 
 export interface ManualColorOption {

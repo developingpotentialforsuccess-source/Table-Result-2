@@ -2,8 +2,8 @@ import React, { useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { Users, Cloud, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { Student, ClassRecord, Level, calculateGrade, TeacherSettings } from '../types';
+import { Users } from 'lucide-react';
+import { Student, ClassRecord, Level, calculateGrade } from '../types';
 import { isMidtermCategory, isFinalCategory, getStudentScoreValue, isSubjectActiveInMode } from "../lib/categoryUtils";
 
 interface DashboardProps {
@@ -11,9 +11,6 @@ interface DashboardProps {
   students: Student[];
   currentLevel: Level;
   resultMode: 'full' | 'midterm' | 'final';
-  settings?: TeacherSettings;
-  onSyncDrive?: () => Promise<void>;
-  isSyncing?: boolean;
 }
 
 const DEFAULT_GRADING_SCALE = [
@@ -33,15 +30,7 @@ const DEFAULT_GRADING_SCALE = [
 
 
 
-export const Dashboard: React.FC<DashboardProps> = ({ 
-  currentRecord, 
-  students, 
-  currentLevel, 
-  resultMode,
-  settings,
-  onSyncDrive,
-  isSyncing = false
-}) => {
+export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, currentLevel, resultMode }) => {
   const stats = useMemo(() => {
     if (!currentRecord || !currentLevel) return null;
     const activeStudents = (students || []).filter(s => !s.isHidden);
@@ -268,33 +257,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
            <select className="border border-slate-300 rounded p-1 text-sm bg-slate-50"><option>All</option></select>
            <div className="text-xs text-slate-500 font-semibold mb-1 mt-2">Select Grade</div>
            <select className="border border-slate-300 rounded p-1 text-sm bg-slate-50"><option>All</option></select>
-           
-           {onSyncDrive && (
-             <div className="mt-4 pt-3 border-t border-slate-100">
-               <button
-                 onClick={onSyncDrive}
-                 disabled={isSyncing}
-                 className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm ${
-                   isSyncing 
-                     ? 'bg-slate-100 text-slate-400 cursor-wait' 
-                     : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
-                 }`}
-               >
-                 {isSyncing ? (
-                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                 ) : (
-                   <Cloud className="w-3.5 h-3.5" />
-                 )}
-                 {isSyncing ? "Syncing..." : "Sync to Drive"}
-               </button>
-               {settings?.lastDriveSync && (
-                 <div className="mt-1.5 flex items-center justify-center gap-1 text-[9px] text-slate-400 font-medium">
-                   <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
-                   Last sync: {new Date(settings.lastDriveSync).toLocaleString()}
-                 </div>
-               )}
-             </div>
-           )}
         </div>
         
         <div className="flex items-center gap-4 border-r border-slate-100 pr-4 pl-2 min-w-[150px]">

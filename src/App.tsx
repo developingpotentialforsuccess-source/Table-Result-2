@@ -31,7 +31,6 @@ import {
   Bell,
   RefreshCw,
   Clipboard,
-  Share2,
 } from "lucide-react";
 import {
   Level,
@@ -76,7 +75,6 @@ import {
   getLocalStudents,
 } from "./lib/firestoreUtils";
 import { isMidtermCategory, isFinalCategory } from "./lib/categoryUtils";
-import { googleSignIn as driveSignIn, exportToGoogleSheets, getAccessToken } from "./lib/googleDrive";
 
 const DEFAULT_SETTINGS: TeacherSettings = {
   colorMode: 'monochrome',
@@ -415,42 +413,6 @@ export default function App() {
   const [showRecycleBin, setShowRecycleBin] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isExportingToDrive, setIsExportingToDrive] = useState(false);
-  const [driveExportError, setDriveExportError] = useState<string | null>(null);
-  const [driveExportSuccess, setDriveExportSuccess] = useState(false);
-
-  const handleExportToGoogleDrive = async () => {
-    if (!currentRecord || !currentLevel) return;
-    
-    setIsExportingToDrive(true);
-    setDriveExportError(null);
-    setDriveExportSuccess(false);
-    
-    try {
-      // Ensure we have an access token with Drive scopes
-      let token = getAccessToken();
-      if (!token) {
-        const result = await driveSignIn();
-        token = result?.accessToken || null;
-      }
-      
-      if (!token) throw new Error("Failed to connect to Google Drive");
-      
-      await exportToGoogleSheets(currentRecord, currentLevel, students);
-      
-      const newSyncTime = new Date().toISOString();
-      const currentSettings = currentRecord.settings || DEFAULT_SETTINGS;
-      handleUpdateSettings({ ...currentSettings, lastDriveSync: newSyncTime });
-      
-      setDriveExportSuccess(true);
-      setTimeout(() => setDriveExportSuccess(false), 5000);
-    } catch (err: any) {
-      console.error("Drive export failed:", err);
-      setDriveExportError(err.message || "Failed to export to Google Drive");
-    } finally {
-      setIsExportingToDrive(false);
-    }
-  };
   const [activeView, setActiveView] = useState<'grades' | 'attendance'>('grades');
 
   const [paperStyle, setPaperStyle] = useState<string>(() => {
@@ -2028,36 +1990,6 @@ export default function App() {
                           <FileText className="w-4 h-4 text-red-600" /> All PDF Results (Mid + Final + Full)
                         </button>
                       </div>
-
-                      <div className="p-2 border-t border-slate-100 bg-slate-50/50">
-                        <p className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Google Drive</p>
-                        <button
-                          onClick={handleExportToGoogleDrive}
-                          disabled={isExportingToDrive}
-                          className={`w-full text-left flex items-center gap-2 px-2 py-2.5 text-sm rounded-lg transition-all border ${
-                            isExportingToDrive 
-                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-wait'
-                              : driveExportSuccess
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'text-slate-700 bg-white hover:bg-blue-50 hover:text-blue-700 border-slate-200 hover:border-blue-200 cursor-pointer'
-                          }`}
-                        >
-                          {isExportingToDrive ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : driveExportSuccess ? (
-                            <Check className="w-4 h-4" />
-                          ) : (
-                            <FolderOpen className="w-4 h-4 text-emerald-600" />
-                          )}
-                          <span className="font-bold">
-                            {isExportingToDrive ? "Exporting..." : driveExportSuccess ? "Saved to Drive!" : "Export to Drive"}
-                          </span>
-                        </button>
-                        {driveExportError && (
-                          <p className="mt-1 px-2 text-[10px] font-medium text-red-500">{driveExportError}</p>
-                        )}
-                        <p className="mt-1 px-2 text-[9px] text-slate-400 font-medium">Saves as Google Spreadsheet</p>
-                      </div>
                     </div>
                   </>
                 )}
@@ -2175,21 +2107,6 @@ export default function App() {
               />
             </div>
           </div>
-          {(accessCode.trim().toLowerCase() === "dps" || accessCode.trim().toLowerCase() === "dpss") && (
-            <div className="flex items-center">
-              <button 
-                onClick={() => {
-                   const url = window.location.href;
-                   navigator.clipboard.writeText(url);
-                   alert("App link copied to clipboard! You can share this link with others.");
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
-              >
-                <Share2 className="w-4 h-4" />
-                Share
-              </button>
-            </div>
-          )}
           <div className="flex-1 min-w-[140px] sm:min-w-[200px]">
             <label className="block text-xs font-medium text-slate-500 mb-1">
               Level Profile
@@ -3036,15 +2953,7 @@ export default function App() {
               </div>
             )}
             {currentTab === "dashboard" ? (
-              <Dashboard 
-                currentRecord={currentRecord} 
-                students={students} 
-                currentLevel={currentLevel} 
-                resultMode={resultMode}
-                settings={currentRecord?.settings || DEFAULT_SETTINGS}
-                onSyncDrive={handleExportToGoogleDrive}
-                isSyncing={isExportingToDrive}
-              />
+              <Dashboard currentRecord={currentRecord} students={students} currentLevel={currentLevel} resultMode={resultMode} />
             ) : activeView === 'attendance' ? (
               <AttendanceTracker 
                 students={students}
