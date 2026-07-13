@@ -779,6 +779,18 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                     <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors">
                       <input 
                         type="checkbox" 
+                        checked={settings.showPctNextToWtd}
+                        onChange={(e) => onUpdateSettings({ ...settings, showPctNextToWtd: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <span className="block text-sm font-bold text-slate-900">Show Score % next to WTD</span>
+                        <span className="block text-xs text-slate-500">Display the raw percentage score (e.g. (95%)) next to the weighted score in the table</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors">
+                      <input 
+                        type="checkbox" 
                         checked={settings.completelyHideHiddenCategories}
                         onChange={(e) => onUpdateSettings({ ...settings, completelyHideHiddenCategories: e.target.checked })}
                         className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"

@@ -29,7 +29,8 @@ export const isMidtermCategory = (cat: Category | string) => {
     return n.includes("MID-TERM") || n.includes("MID TERM") || n.includes("MIDTERM") || n.includes("MID EXAM") || n.includes("MID TEST");
   }
   
-  if (cat.isMidterm) return true;
+  if (cat.isMidterm === true) return true;
+  if (cat.isMidterm === false) return false;
   
   // Implicit rule: If it has midtermWeight, but no finalWeight and no full term weight, it's a dedicated midterm category
   if ((cat.midtermWeight && cat.midtermWeight > 0) && (!cat.finalWeight || cat.finalWeight === 0) && (!cat.weight || cat.weight === 0)) {
@@ -46,7 +47,8 @@ export const isFinalCategory = (cat: Category | string) => {
     return n.includes("FINAL");
   }
   
-  if (cat.isFinal) return true;
+  if (cat.isFinal === true) return true;
+  if (cat.isFinal === false) return false;
   
   // Implicit rule
   if ((cat.finalWeight && cat.finalWeight > 0) && (!cat.midtermWeight || cat.midtermWeight === 0) && (!cat.weight || cat.weight === 0)) {

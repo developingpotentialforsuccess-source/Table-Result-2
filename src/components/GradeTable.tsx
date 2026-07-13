@@ -1825,13 +1825,18 @@ export default function GradeTable({
 
                   if (ic.itemIndex === -5) {
                     const weighted = metrics.categoryAvgs[`${ic.categoryId}_weighted`] || 0;
+                    const pct = metrics.categoryAvgs[ic.categoryId] || 0;
+                    const showPct = settings?.showPctNextToWtd;
                     return (
                       <td
                         key={`${ic.categoryId}_weighted_${i}`}
                         className={`px-1 py-1 border-r border-b ${gridStyles.bodyBorderClass} font-bold text-center text-sm bg-purple-50/${op.special} text-purple-900 w-20 min-w-[5rem]`}
-                        title="Weighted contribution to subject/total"
+                        title={`Weighted contribution: ${weighted.toFixed(1)} (Score: ${pct.toFixed(1)}%)`}
                       >
-                        {weighted.toFixed(1)}
+                        <div className="flex flex-col leading-tight">
+                          <span>{weighted.toFixed(1)}</span>
+                          {showPct && <span className="text-[10px] opacity-60 font-medium">({pct.toFixed(0)}%)</span>}
+                        </div>
                       </td>
                     );
                   }
