@@ -700,49 +700,99 @@ export default function GradeTable({
         const totalComponentsWeight = otherWeightTotal + (midWeightContrib || 0) + (finalWeightContrib || 0);
 
         if (hasMidtermCat && midWeightContrib > 0) {
+          const catId = `exam_midterm_${subject.id}`;
+          const isCatHidden = hiddenCategories.includes(catId);
           const midTheme = getTheme(subjectIndex, "Midterm", settings);
-          categoryCols.push({
-            category: { id: `exam_midterm_${subject.id}`, name: "Midterm Test", weight: midWeightContrib },
-            colSpan: 1,
-            subjectId: subject.id,
-            subjectIndex,
-            theme: midTheme,
-          });
-          itemCols.push({
-            categoryId: `exam_midterm_${subject.id}`,
-            subjectId: subject.id,
-            itemIndex: -1,
-            label: " ",
-            maxScore: 100,
-            isAvg: false,
-            subjectIndex,
-            theme: midTheme,
-            categoryWeight: midWeightContrib,
-          });
-          subjectSpan += 1;
+          let catSpan = 0;
+          
+          if (isCatHidden) {
+            if (!settings?.completelyHideHiddenCategories) {
+              itemCols.push({
+                categoryId: catId,
+                subjectId: subject.id,
+                itemIndex: -4,
+                label: "Hidden",
+                maxScore: 0,
+                subjectIndex,
+                theme: midTheme,
+                isHidden: true,
+              });
+              catSpan = 1;
+            }
+          } else {
+            itemCols.push({
+              categoryId: catId,
+              subjectId: subject.id,
+              itemIndex: -1,
+              label: `W ${midWeightContrib}%`,
+              maxScore: 100,
+              isAvg: false,
+              subjectIndex,
+              theme: midTheme,
+              categoryWeight: midWeightContrib,
+            });
+            catSpan = 1;
+          }
+
+          if (catSpan > 0) {
+            categoryCols.push({
+              category: { id: catId, name: "Midterm Test", weight: midWeightContrib },
+              colSpan: catSpan,
+              subjectId: subject.id,
+              subjectIndex,
+              theme: midTheme,
+              isHidden: isCatHidden,
+            });
+            subjectSpan += catSpan;
+          }
         }
 
         if (hasFinalCat && finalWeightContrib > 0) {
+          const catId = `exam_final_${subject.id}`;
+          const isCatHidden = hiddenCategories.includes(catId);
           const finalTheme = getTheme(subjectIndex, "Final", settings);
-          categoryCols.push({
-            category: { id: `exam_final_${subject.id}`, name: "Final Test", weight: finalWeightContrib },
-            colSpan: 1,
-            subjectId: subject.id,
-            subjectIndex,
-            theme: finalTheme,
-          });
-          itemCols.push({
-            categoryId: `exam_final_${subject.id}`,
-            subjectId: subject.id,
-            itemIndex: -1,
-            label: " ",
-            maxScore: 100,
-            isAvg: false,
-            subjectIndex,
-            theme: finalTheme,
-            categoryWeight: finalWeightContrib,
-          });
-          subjectSpan += 1;
+          let catSpan = 0;
+
+          if (isCatHidden) {
+            if (!settings?.completelyHideHiddenCategories) {
+              itemCols.push({
+                categoryId: catId,
+                subjectId: subject.id,
+                itemIndex: -4,
+                label: "Hidden",
+                maxScore: 0,
+                subjectIndex,
+                theme: finalTheme,
+                isHidden: true,
+              });
+              catSpan = 1;
+            }
+          } else {
+            itemCols.push({
+              categoryId: catId,
+              subjectId: subject.id,
+              itemIndex: -1,
+              label: `W ${finalWeightContrib}%`,
+              maxScore: 100,
+              isAvg: false,
+              subjectIndex,
+              theme: finalTheme,
+              categoryWeight: finalWeightContrib,
+            });
+            catSpan = 1;
+          }
+
+          if (catSpan > 0) {
+            categoryCols.push({
+              category: { id: catId, name: "Final Test", weight: finalWeightContrib },
+              colSpan: catSpan,
+              subjectId: subject.id,
+              subjectIndex,
+              theme: finalTheme,
+              isHidden: isCatHidden,
+            });
+            subjectSpan += catSpan;
+          }
         }
 
         const combinedTheme = getTheme(subjectIndex, "Combined", settings);
@@ -1250,9 +1300,35 @@ export default function GradeTable({
             )}
             {subjectCols.map((sc) => {
               const theme = getTheme(sc.index, sc.subject.name, settings);
-              const subjectCategories = sc.subject.categories.map((c: any) => {
+              let subjectCategories = sc.subject.categories.map((c: any) => {
                 return { ...c, isHiddenByMode: false };
               });
+              if (resultMode === 'full') {
+                const midCats = subjectCategories.filter(isMidtermCategory);
+                const finalCats = subjectCategories.filter(isFinalCategory);
+                
+                // Remove the standard midterm/final categories from the dropdown in full mode, 
+                // since they are replaced by the combined "Midterm Test" and "Final Test"
+                subjectCategories = subjectCategories.filter(c => !isMidtermCategory(c) && !isFinalCategory(c));
+
+                const hasMidtermCat = sc.subject.categories.some(c => isMidtermCategory(c));
+                const hasFinalCat = sc.subject.categories.some(c => isFinalCategory(c));
+                
+                if (hasMidtermCat) {
+                  const midWeightContrib = sc.subject.fullModeMidtermWeight ?? midCats.reduce((sum: number, c: any) => sum + (c.weight ?? 0), 0);
+                  if (midWeightContrib > 0) {
+                    subjectCategories.push({ id: `exam_midterm_${sc.subject.id}`, name: "Midterm Test", weight: midWeightContrib, isHiddenByMode: false });
+                  }
+                }
+                
+                if (hasFinalCat) {
+                  const finalWeightContrib = sc.subject.fullModeFinalWeight ?? finalCats.reduce((sum: number, c: any) => sum + (c.weight ?? 0), 0);
+                  if (finalWeightContrib > 0) {
+                    subjectCategories.push({ id: `exam_final_${sc.subject.id}`, name: "Final Test", weight: finalWeightContrib, isHiddenByMode: false });
+                  }
+                }
+              }
+
               const hiddenCount = subjectCategories.filter((c: any) => hiddenCategories.includes(c.id)).length;
               const allCategoriesHidden = subjectCategories.length > 0 && hiddenCount === subjectCategories.length;
 
@@ -1551,6 +1627,12 @@ export default function GradeTable({
                                       if (settings?.showCategoryWeight === false || cc.category.name === "RESULT") return "";
                                       const subject = level.subjects.find(s => s.id === cc.subjectId);
                                       const activeWeight = getCategoryActiveWeight(cc.category, subject, resultMode);
+                                      
+                                      const isExam = cc.category.id.startsWith('exam_') || isMidtermCategory(cc.category) || isFinalCategory(cc.category);
+                                      if (resultMode === 'full' && !isExam) {
+                                        return ""; // Do not show weight for regular categories in termly result
+                                      }
+                                      
                                       return ` (${activeWeight}%)`;
                                     })()}
                                   </span>
@@ -1665,36 +1747,25 @@ export default function GradeTable({
                           <div className="flex flex-col items-center justify-center h-full">
                             {/* Only show MAX input for regular categories OR for exams when NOT in full mode */}
                             {!(resultMode === 'full' && ic.categoryId.startsWith('exam_')) ? (
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <input 
-                                    type="text" 
-                                    value={ic.label} 
-                                    onChange={(e) => handleUpdateItemName(ic.subjectId, ic.categoryId, ic.itemIndex, e.target.value)}
-                                    className={`w-14 bg-transparent text-center font-bold text-[10px] uppercase ${theme.text} outline-none hover:bg-white/20 focus:bg-white/50 focus:ring-1 focus:ring-blue-200 rounded`}
-                                    placeholder={`Item ${ic.itemIndex + 1}`}
+                                <div className="flex flex-col items-center justify-center gap-1 py-1">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={ic.maxScore}
+                                    onChange={(e) =>
+                                      handleUpdateMaxScore(
+                                        ic.subjectId,
+                                        ic.categoryId,
+                                        ic.itemIndex,
+                                        e.target.value === '' ? undefined : Number(e.target.value)
+                                      )
+                                    }
+                                    className="w-10 no-spinners bg-transparent hover:bg-black/5 focus:bg-white/50 border-b border-red-200 focus:border-red-500 outline-none text-center font-bold text-red-700 text-[11px] rounded transition-colors"
+                                    title="Set Max Score"
                                   />
-                                  <div className="flex items-center whitespace-nowrap bg-slate-50/50 px-1 py-0.5 rounded border border-slate-200/30">
-                                    <div className="flex items-center text-[10px] font-bold text-red-600">
-                                      <input
-                                        type="number"
-                                        min="1"
-                                        value={ic.maxScore}
-                                        onChange={(e) =>
-                                          handleUpdateMaxScore(
-                                            ic.subjectId,
-                                            ic.categoryId,
-                                            ic.itemIndex,
-                                            e.target.value === '' ? undefined : Number(e.target.value)
-                                          )
-                                        }
-                                        className="w-8 no-spinners bg-transparent border-b border-red-200 focus:border-red-500 outline-none text-center font-bold text-red-700 text-[10px]"
-                                        title="Set Full Raw Score"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button title="Paste scores from spreadsheet" onClick={() => handlePasteScores(ic)} className="text-slate-400 hover:text-blue-500"><ClipboardPaste className="w-3 h-3" /></button>
-                                    <button title="Auto-fill blank scores" onClick={() => handleAutoFill(ic)} className="text-slate-400 hover:text-blue-500"><Wand2 className="w-3 h-3" /></button>
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-0 right-0 p-1 bg-white/80 rounded shadow-sm">
+                                    <button title="Paste scores from spreadsheet" onClick={() => handlePasteScores(ic)} className="text-slate-500 hover:text-blue-600"><ClipboardPaste className="w-3 h-3" /></button>
+                                    <button title="Auto-fill blank scores" onClick={() => handleAutoFill(ic)} className="text-slate-500 hover:text-blue-600"><Wand2 className="w-3 h-3" /></button>
                                   </div>
                                 </div>
                             ) : (
