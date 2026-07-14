@@ -260,8 +260,39 @@ export function calculateStatus(
   }
 }
 
+export function isMidtermCategoryName(name: string): boolean {
+  const n = name.toUpperCase();
+  return n.includes("MID-TERM") || n.includes("MID TERM") || n.includes("MIDTERM") || n.includes("MID EXAM") || n.includes("MID TEST") || n.includes("GRAMMAR TEST");
+}
+
+export function isFinalCategoryName(name: string): boolean {
+  const n = name.toUpperCase();
+  return n.includes("FINAL") || n.includes("SPEAKING");
+}
+
+export function isMidtermCat(cat: Category): boolean {
+  if (cat.isMidterm === true) return true;
+  if (cat.isMidterm === false) return false;
+  if ((cat.midtermWeight && cat.midtermWeight > 0) && (!cat.finalWeight || cat.finalWeight === 0) && (!cat.weight || cat.weight === 0)) {
+    return true;
+  }
+  return isMidtermCategoryName(cat.name);
+}
+
+export function isFinalCat(cat: Category): boolean {
+  if (cat.isFinal === true) return true;
+  if (cat.isFinal === false) return false;
+  if ((cat.finalWeight && cat.finalWeight > 0) && (!cat.midtermWeight || cat.midtermWeight === 0) && (!cat.weight || cat.weight === 0)) {
+    return true;
+  }
+  return isFinalCategoryName(cat.name);
+}
+
 export function getSubjectWeight(subject: Subject): number {
-  return subject.categories.reduce((sum, cat) => sum + cat.weight, 0);
+  const catWeight = subject.categories
+    .filter(cat => !isMidtermCat(cat) && !isFinalCat(cat))
+    .reduce((sum, cat) => sum + (cat.weight || 0), 0);
+  return catWeight + (subject.fullModeMidtermWeight ?? 0) + (subject.fullModeFinalWeight ?? 0);
 }
 
 export function getLevelTotalWeight(level: Level): number {

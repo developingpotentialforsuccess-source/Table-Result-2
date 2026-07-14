@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { ClassRecord, Level, Student, calculateGrade, calculateStatus } from '../types';
 import { calculateAttendancePercentage } from './attendanceUtils';
+import { isMidtermCategory, isFinalCategory } from './categoryUtils';
 
 export function exportToExcel(currentRecord: ClassRecord, currentLevel: Level, resultMode: 'full' | 'midterm' | 'final' = 'full', students?: Student[]) {
   const data = generateExportData(currentRecord, currentLevel, resultMode, students);
@@ -196,8 +197,8 @@ export function generateExportData(currentRecord: ClassRecord, currentLevel: Lev
         let hasAnyScore = false;
 
         subject.categories.forEach(cat => {
-          if (mode === 'midterm' && (cat.midtermWeight === undefined || cat.midtermWeight <= 0)) return;
-          if (mode === 'final' && (cat.finalWeight === undefined || cat.finalWeight <= 0)) return;
+          if (mode === 'midterm' && !isMidtermCategory(cat)) return;
+          if (mode === 'final' && !isFinalCategory(cat)) return;
 
           let catEarned = 0;
           let catMax = 0;
@@ -217,13 +218,9 @@ export function generateExportData(currentRecord: ClassRecord, currentLevel: Lev
           }
           const catPct = catMax > 0 ? (catEarned / catMax) * 100 : 0;
           
-          const activeWeight = mode === 'midterm'
-            ? (cat.midtermWeight || 0)
-            : mode === 'final'
-              ? (cat.finalWeight || 0)
-              : cat.weight;
+          const activeWeight = cat.weight ?? 0;
 
-          if (hasCatScore) {
+          if (hasCatScore && activeWeight > 0) {
             points += (catPct / 100) * activeWeight;
             weight += activeWeight;
           }
@@ -257,47 +254,85 @@ export function generateExportData(currentRecord: ClassRecord, currentLevel: Lev
         hasFinalScore = true;
       }
 
-      const midWeight = subject.fullModeMidtermWeight ?? 30;
-      const finalWeight = subject.fullModeFinalWeight ?? 70;
-
+      let subjectTargetWeight = 100;
       if (resultMode === 'midterm') {
         subjectPercentage = midResult;
         hasSubjectScore = hasMidScore || subject.categories.some(cat => {
-          if (cat.midtermWeight === undefined || cat.midtermWeight <= 0) return false;
+          if (!isMidtermCategory(cat)) return false;
           for (let i = 0; i < cat.itemCount; i++) {
             if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
           }
           return false;
         });
+        subjectTargetWeight = subject.midtermTargetWeight ?? subject.targetWeight ?? 100;
+        subjectWtds[subject.name] = (subjectPercentage / 100) * subjectTargetWeight;
       } else if (resultMode === 'final') {
         subjectPercentage = finalResult;
         hasSubjectScore = hasFinalScore || subject.categories.some(cat => {
-          if (cat.finalWeight === undefined || cat.finalWeight <= 0) return false;
+          if (!isFinalCategory(cat)) return false;
           for (let i = 0; i < cat.itemCount; i++) {
             if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
           }
           return false;
         });
+        subjectTargetWeight = subject.finalTargetWeight ?? subject.targetWeight ?? 100;
+        subjectWtds[subject.name] = (subjectPercentage / 100) * subjectTargetWeight;
       } else {
-        subjectPercentage = (midResult * (midWeight / 100)) + (finalResult * (finalWeight / 100));
+        // COMPREHENSIVE TERMLY RESULT CALCULATION
+        const otherCats = subject.categories.filter(cat => !isMidtermCategory(cat) && !isFinalCategory(cat));
+        const midCats = subject.categories.filter(isMidtermCategory);
+        const finalCats = subject.categories.filter(isFinalCategory);
+
+        const midWeightContrib = subject.fullModeMidtermWeight ?? midCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+        const finalWeightContrib = subject.fullModeFinalWeight ?? finalCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+        
+        let otherWeightedSum = 0;
+        const otherWeightTotal = otherCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+        
+        otherCats.forEach(cat => {
+          let catEarned = 0;
+          let catMax = 0;
+          let hasCatScore = false;
+          for (let i = 0; i < cat.itemCount; i++) {
+            const s = student.scores[`${cat.id}_${i}`];
+            if (typeof s === 'number') {
+              catEarned += s;
+              catMax += (cat.itemMaxScores?.[i] || 100);
+              hasCatScore = true;
+            } else if (currentRecord.settings?.treatBlanksAsZero) {
+              catEarned += 0;
+              catMax += (cat.itemMaxScores?.[i] || 100);
+              hasCatScore = true;
+            }
+          }
+          const catPct = catMax > 0 ? (catEarned / catMax) * 100 : 0;
+          if (hasCatScore && cat.weight > 0) {
+            otherWeightedSum += (catPct / 100) * cat.weight;
+          }
+        });
+
+        const totalComponentsWeight = otherWeightTotal + (midWeightContrib || 0) + (finalWeightContrib || 0);
+        const catPoints = otherWeightedSum;
+        const midPoints = (midResult / 100) * (midWeightContrib || 0);
+        const finPoints = (finalResult / 100) * (finalWeightContrib || 0);
+        
+        const subjectScoreRaw = catPoints + midPoints + finPoints;
+        
+        subjectPercentage = totalComponentsWeight > 0 ? (subjectScoreRaw / totalComponentsWeight) * 100 : 0;
+        
         hasSubjectScore = hasMidScore || hasFinalScore || subject.categories.some(cat => {
           for (let i = 0; i < cat.itemCount; i++) {
             if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
           }
           return false;
         });
+        
+        subjectTargetWeight = totalComponentsWeight;
+        subjectWtds[subject.name] = subjectScoreRaw;
       }
 
       subjectAvgs[subject.name] = subjectPercentage;
       
-      const subjectTargetWeight = resultMode === 'midterm' 
-        ? (subject.midtermTargetWeight ?? subject.targetWeight ?? 100)
-        : resultMode === 'final'
-          ? (subject.finalTargetWeight ?? subject.targetWeight ?? 100)
-          : (subject.targetWeight ?? 100);
-
-      subjectWtds[subject.name] = (subjectPercentage / 100) * subjectTargetWeight;
-
       const divideByAll = currentRecord.settings?.divideByAllSubjects !== false;
 
       if (divideByAll || hasSubjectScore) {

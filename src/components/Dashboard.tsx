@@ -124,9 +124,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
           hasFinalScore = true;
         }
 
-        const midWeight = subject.fullModeMidtermWeight ?? 30;
-        const finalWeight = subject.fullModeFinalWeight ?? 70;
-
         if (resultMode === 'midterm') {
           subjectPercentage = midResult;
           hasSubjectScore = hasMidScore || subject.categories.some((cat: any) => {
@@ -146,7 +143,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentRecord, students, c
             return false;
           });
         } else {
-          subjectPercentage = (midResult * (midWeight / 100)) + (finalResult * (finalWeight / 100));
+          // COMPREHENSIVE TERMLY RESULT CALCULATION
+          let otherWeightedSum = 0;
+          let otherWeightTotal = 0;
+          subject.categories.forEach((cat: any) => {
+            if (isMidtermCategory(cat) || isFinalCategory(cat)) return;
+            
+            let catEarned = 0;
+            let catMax = 0;
+            let hasCatScore = false;
+            for (let i = 0; i < cat.itemCount; i++) {
+              const s = getStudentScoreValue(student.scores, cat.id, i, 'full', cat);
+              if (typeof s === 'number') {
+                catEarned += s;
+                catMax += (cat.itemMaxScores?.[i] || 100);
+                hasCatScore = true;
+              } else if (currentRecord.settings?.treatBlanksAsZero) {
+                catEarned += 0;
+                catMax += (cat.itemMaxScores?.[i] || 100);
+                hasCatScore = true;
+              }
+            }
+            const catPct = catMax > 0 ? (catEarned / catMax) * 100 : 0;
+            if (hasCatScore && cat.weight > 0) {
+              otherWeightedSum += (catPct / 100) * cat.weight;
+              otherWeightTotal += cat.weight;
+            }
+          });
+          
+          const midWeightContrib = subject.fullModeMidtermWeight ?? 0;
+          const finalWeightContrib = subject.fullModeFinalWeight ?? 0;
+          const totalComponentsWeight = otherWeightTotal + midWeightContrib + finalWeightContrib;
+          
+          const catPoints = otherWeightedSum;
+          const midPoints = (midResult / 100) * midWeightContrib;
+          const finPoints = (finalResult / 100) * finalWeightContrib;
+          
+          const subjectScoreRaw = catPoints + midPoints + finPoints;
+          
+          subjectPercentage = totalComponentsWeight > 0 ? (subjectScoreRaw / totalComponentsWeight) * 100 : 0;
+          
           hasSubjectScore = hasMidScore || hasFinalScore || subject.categories.some((cat: any) => {
             for (let i = 0; i < cat.itemCount; i++) {
               if (typeof getStudentScoreValue(student.scores, cat.id, i, 'full', cat) === 'number') return true;

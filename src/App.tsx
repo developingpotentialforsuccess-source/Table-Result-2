@@ -94,7 +94,7 @@ const DEFAULT_SETTINGS: TeacherSettings = {
   keepWtdOnHide: false,
   divideByAllSubjects: true,
   resultDisplayMode: 'wtd',
-  showCategoryWeight: false,
+  showCategoryWeight: true,
   showCategoryHideIcon: false,
   completelyHideHiddenCategories: true,
   showWeightInHeader: true,
