@@ -415,6 +415,11 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
           </div>
         )}
         
+        <div className="block md:hidden bg-blue-50 border border-blue-100 text-blue-700 px-3 py-2 rounded-xl text-xs flex items-center gap-2">
+          <span className="animate-pulse">↔️</span>
+          <span><strong>Tip:</strong> Swipe left/right on any subject card to view all weights, categories, and exam settings.</span>
+        </div>
+        
         {level.subjects.map((subject) => {
           const isExpanded = expandedSubject === subject.id;
           const subjectWeight = getSubjectWeight(subject);
@@ -428,8 +433,9 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
           }, 0);
           
           return (
-            <div key={subject.id} className="border border-slate-200 rounded-xl overflow-hidden">
-              <div className="bg-slate-50 p-3 flex items-center gap-3">
+            <div key={subject.id} className="border border-slate-200 rounded-xl overflow-x-auto [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]">
+              <div className="min-w-[720px] md:min-w-0">
+                <div className="bg-slate-50 p-3 flex items-center gap-3">
                 <button
                   onClick={() => setExpandedSubject(isExpanded ? null : subject.id)}
                   className="p-1 text-slate-500 hover:text-slate-800 rounded transition-colors"
@@ -814,6 +820,7 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                   )}
                 </div>
               )}
+              </div>
             </div>
           );
         })}
@@ -839,42 +846,42 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
         )}
 
         <div className="mt-8 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:w-auto">
               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Level SCALES</h3>
-              <div className="flex bg-slate-200 p-1 rounded-xl text-xs font-black uppercase">
+              <div className="flex bg-slate-200 p-1 rounded-xl text-xs font-black uppercase w-full sm:w-auto">
                 <button
                   onClick={() => setActiveScaleType('grade')}
-                  className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeScaleType === 'grade' ? 'bg-white text-blue-700 shadow-md ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${activeScaleType === 'grade' ? 'bg-white text-blue-700 shadow-md ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   <GraduationCap className="w-4 h-4" />
                   Grade Scale
                 </button>
                 <button
                   onClick={() => setActiveScaleType('status')}
-                  className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeScaleType === 'status' ? 'bg-white text-orange-700 shadow-md ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${activeScaleType === 'status' ? 'bg-white text-orange-700 shadow-md ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   <Check className="w-4 h-4" />
                   Status Scale
                 </button>
               </div>
             </div>
-            <div className="flex bg-slate-100 p-1 rounded-lg text-xs font-semibold">
+            <div className="flex bg-slate-100 p-1 rounded-lg text-xs font-semibold w-full sm:w-auto justify-between sm:justify-start">
               <button
                 onClick={() => setActiveGradingTab('full')}
-                className={`px-3 py-1 rounded-md transition-all ${activeGradingTab === 'full' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 sm:flex-initial px-3 py-1 rounded-md transition-all text-center ${activeGradingTab === 'full' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Full Term
               </button>
               <button
                 onClick={() => setActiveGradingTab('midterm')}
-                className={`px-3 py-1 rounded-md transition-all ${activeGradingTab === 'midterm' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 sm:flex-initial px-3 py-1 rounded-md transition-all text-center ${activeGradingTab === 'midterm' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Mid-term
               </button>
               <button
                 onClick={() => setActiveGradingTab('final')}
-                className={`px-3 py-1 rounded-md transition-all ${activeGradingTab === 'final' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 sm:flex-initial px-3 py-1 rounded-md transition-all text-center ${activeGradingTab === 'final' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Final Test
               </button>

@@ -395,7 +395,7 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
 
         <div className="flex-1 overflow-y-auto bg-slate-50 relative">
           {activeTab === 'level' && (
-             <div className="p-6 space-y-6">
+             <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1">
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
