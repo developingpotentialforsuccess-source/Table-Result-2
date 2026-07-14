@@ -31,6 +31,7 @@ import {
   Bell,
   RefreshCw,
   Clipboard,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   Level,
@@ -2833,7 +2834,7 @@ export default function App() {
                 </button>
               )}
 
-              {/* Compact View Toggle - Repositioned between Attendance and Mode */}
+              {/* Compact View Toggle */}
               <button
                 onClick={() => handleUpdateSettings({
                   ...currentRecord!.settings!,
@@ -2858,6 +2859,49 @@ export default function App() {
                   </>
                 )}
               </button>
+
+              {/* View Settings Menu */}
+              <div className="relative group/view-settings hidden md:block">
+                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 bg-white hover:bg-slate-50 transition-all shadow-sm">
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  Settings
+                  <ChevronDown className="w-3 h-3 opacity-50 ml-1" />
+                </button>
+                <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl opacity-0 invisible group-hover/view-settings:opacity-100 group-hover/view-settings:visible transition-all z-50">
+                  <div className="p-3 flex flex-col gap-3">
+                    <label className="flex items-center justify-between gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                      <span>Show Item Config (MAX, etc.)</span>
+                      <input 
+                        type="checkbox" 
+                        checked={currentRecord?.settings?.showItemConfig !== false}
+                        onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, showItemConfig: e.target.checked})}
+                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                      <span>Hide Regular Categories</span>
+                      <input 
+                        type="checkbox" 
+                        checked={currentRecord?.settings?.hideRegularCategories === true}
+                        onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, hideRegularCategories: e.target.checked})}
+                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                      />
+                    </label>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-bold text-slate-500 uppercase">Result Column Display</span>
+                      <select 
+                        value={currentRecord?.settings?.resultDisplayMode || 'both'}
+                        onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, resultDisplayMode: e.target.value as 'both'|'avg'|'wtd'})}
+                        className="w-full text-sm font-medium border border-slate-200 rounded p-1.5 outline-none focus:border-blue-500 bg-white"
+                      >
+                        <option value="both">Both (Weight & Average)</option>
+                        <option value="wtd">Weight Only</option>
+                        <option value="avg">Average Only</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Repositioned Mode Select */}
               <div className={`hidden sm:flex items-center border rounded-lg px-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all ml-2 ${

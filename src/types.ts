@@ -93,6 +93,8 @@ export interface TeacherSettings {
   showCategoryWeight?: boolean;
   showCategoryHideIcon?: boolean;
   completelyHideHiddenCategories?: boolean;
+  hideRegularCategories?: boolean;
+  showItemConfig?: boolean;
   dailySessions?: 1 | 2;
   showAttendance?: boolean;
   attendanceAbsencePenalty?: number;

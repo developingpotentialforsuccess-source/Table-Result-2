@@ -508,6 +508,9 @@ export default function GradeTable({
       // Normal flow: show categories and exams based on mode
       const visibleCategoriesForSubject = subject.categories.filter((category) => {
         if (resultMode === 'full') {
+          if (settings?.hideRegularCategories) {
+            return false;
+          }
           if (isMidtermCategory(category) || isFinalCategory(category)) {
             return false;
           }
@@ -1310,6 +1313,10 @@ export default function GradeTable({
                 // Remove the standard midterm/final categories from the dropdown in full mode, 
                 // since they are replaced by the combined "Midterm Test" and "Final Test"
                 subjectCategories = subjectCategories.filter(c => !isMidtermCategory(c) && !isFinalCategory(c));
+                
+                if (settings?.hideRegularCategories) {
+                  subjectCategories = [];
+                }
 
                 const hasMidtermCat = sc.subject.categories.some(c => isMidtermCategory(c));
                 const hasFinalCat = sc.subject.categories.some(c => isFinalCategory(c));
@@ -1482,24 +1489,28 @@ export default function GradeTable({
                             </span>
                           );
                         })()}
-                        <span className="mr-0.5 opacity-70 uppercase text-[8px] tracking-tighter">MAX:</span>
-                        <input
-                          type="number"
-                          min="1"
-                          value={resultMode === 'midterm' ? (sc.subject.midtermMaxScore ?? '') : (sc.subject.finalMaxScore ?? '')}
-                          onChange={(e) => {
-                            if (!onUpdateLevel) return;
-                            const newVal = e.target.value === '' ? undefined : Number(e.target.value);
-                            const newSubjects = level.subjects.map(s => {
-                              if (s.id !== sc.subject.id) return s;
-                              return resultMode === 'midterm' 
-                                ? { ...s, midtermMaxScore: newVal }
-                                : { ...s, finalMaxScore: newVal };
-                            });
-                            onUpdateLevel({ ...level, subjects: newSubjects });
-                          }}
-                          className="w-8 no-spinners bg-transparent border-b border-red-300 focus:border-red-500 outline-none text-center font-bold text-red-700 text-xs"
-                        />
+                        {settings?.showItemConfig !== false && (
+                          <div className="flex items-center mt-0.5">
+                            <span className="mr-0.5 opacity-70 uppercase text-[8px] tracking-tighter">MAX:</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={resultMode === 'midterm' ? (sc.subject.midtermMaxScore ?? '') : (sc.subject.finalMaxScore ?? '')}
+                              onChange={(e) => {
+                                if (!onUpdateLevel) return;
+                                const newVal = e.target.value === '' ? undefined : Number(e.target.value);
+                                const newSubjects = level.subjects.map(s => {
+                                  if (s.id !== sc.subject.id) return s;
+                                  return resultMode === 'midterm' 
+                                    ? { ...s, midtermMaxScore: newVal }
+                                    : { ...s, finalMaxScore: newVal };
+                                });
+                                onUpdateLevel({ ...level, subjects: newSubjects });
+                              }}
+                              className="w-8 no-spinners bg-transparent border-b border-red-300 focus:border-red-500 outline-none text-center font-bold text-red-700 text-xs"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1745,24 +1756,39 @@ export default function GradeTable({
 
                         return (
                           <div className="flex flex-col items-center justify-center h-full">
-                            {/* Only show MAX input for regular categories OR for exams when NOT in full mode */}
+                            {/* Only show configuration if setting is enabled and not a synthetic exam column in full mode */}
                             {!(resultMode === 'full' && ic.categoryId.startsWith('exam_')) ? (
                                 <div className="flex flex-col items-center justify-center gap-1 py-1">
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={ic.maxScore}
-                                    onChange={(e) =>
-                                      handleUpdateMaxScore(
-                                        ic.subjectId,
-                                        ic.categoryId,
-                                        ic.itemIndex,
-                                        e.target.value === '' ? undefined : Number(e.target.value)
-                                      )
-                                    }
-                                    className="w-10 no-spinners bg-transparent hover:bg-black/5 focus:bg-white/50 border-b border-red-200 focus:border-red-500 outline-none text-center font-bold text-red-700 text-[11px] rounded transition-colors"
-                                    title="Set Max Score"
-                                  />
+                                  {settings?.showItemConfig !== false && (
+                                    <>
+                                      <input
+                                        type="text"
+                                        placeholder={`Item ${ic.itemIndex + 1}`}
+                                        value={ic.label !== `Item ${ic.itemIndex + 1}` && ic.label !== 'Raw' && ic.label !== ic.categoryId ? ic.label : ''}
+                                        onChange={(e) => handleUpdateItemName(ic.subjectId, ic.categoryId, ic.itemIndex, e.target.value)}
+                                        className="w-14 text-[9px] font-bold text-center bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-400 focus:bg-white outline-none uppercase tracking-tighter"
+                                        title="Rename Item"
+                                      />
+                                      <div className="flex items-center gap-0.5">
+                                        <span className="text-[8px] font-bold text-red-500 uppercase tracking-tighter">Max:</span>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          value={ic.maxScore}
+                                          onChange={(e) =>
+                                            handleUpdateMaxScore(
+                                              ic.subjectId,
+                                              ic.categoryId,
+                                              ic.itemIndex,
+                                              e.target.value === '' ? undefined : Number(e.target.value)
+                                            )
+                                          }
+                                          className="w-8 no-spinners bg-transparent hover:bg-black/5 focus:bg-white/50 border-b border-red-200 focus:border-red-500 outline-none text-center font-bold text-red-700 text-[10px] rounded transition-colors"
+                                          title="Set Max Score"
+                                        />
+                                      </div>
+                                    </>
+                                  )}
                                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-0 right-0 p-1 bg-white/80 rounded shadow-sm">
                                     <button title="Paste scores from spreadsheet" onClick={() => handlePasteScores(ic)} className="text-slate-500 hover:text-blue-600"><ClipboardPaste className="w-3 h-3" /></button>
                                     <button title="Auto-fill blank scores" onClick={() => handleAutoFill(ic)} className="text-slate-500 hover:text-blue-600"><Wand2 className="w-3 h-3" /></button>
