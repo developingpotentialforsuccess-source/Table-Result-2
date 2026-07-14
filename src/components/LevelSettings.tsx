@@ -70,7 +70,7 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
     
     const currentScale = [...((level as any)[key] || [])];
     if (field === 'minScore') {
-      currentScale[index] = { ...currentScale[index], minScore: Number(value) };
+      currentScale[index] = { ...currentScale[index], minScore: value === '' ? undefined : Number(value) };
     } else {
       currentScale[index] = { ...currentScale[index], grade: value };
     }
@@ -117,14 +117,14 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
         let updatedSubject = { ...s, [field]: value };
         
         // Auto-sync category weights if fullModeMidtermWeight or fullModeFinalWeight is changed
-        if (field === 'fullModeMidtermWeight') {
+        if (field === 'fullModeMidtermWeight' && typeof value === 'number') {
           updatedSubject.categories = s.categories.map(c => {
             if (isMidtermCategory(c.name)) {
               return { ...c, weight: value };
             }
             return c;
           });
-        } else if (field === 'fullModeFinalWeight') {
+        } else if (field === 'fullModeFinalWeight' && typeof value === 'number') {
           updatedSubject.categories = s.categories.map(c => {
             if (isFinalCategory(c.name)) {
               return { ...c, weight: value };
@@ -418,6 +418,14 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
         {level.subjects.map((subject) => {
           const isExpanded = expandedSubject === subject.id;
           const subjectWeight = getSubjectWeight(subject);
+          const midSum = subject.categories.reduce((sum, cat) => {
+            if (isMidtermCategory(cat)) return sum + (cat.midtermWeight ?? cat.weight);
+            return sum;
+          }, 0);
+          const finSum = subject.categories.reduce((sum, cat) => {
+            if (isFinalCategory(cat)) return sum + (cat.finalWeight ?? cat.weight);
+            return sum;
+          }, 0);
           
           return (
             <div key={subject.id} className="border border-slate-200 rounded-xl overflow-hidden">
@@ -437,38 +445,60 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                   disabled={isLocked}
                 />
                 <div className="flex items-center gap-1.5 ml-auto">
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-slate-500 uppercase font-bold" title="Full weight">Full %</span>
+                    <div className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold" title="Total weight of this subject in the level (usually sum to 100%)">Subject Wt %</span>
                     <div className="relative">
                       <input 
                         type="number"
                         min="0"
                         value={subject.targetWeight ?? ''}
-                        onChange={(e) => handleUpdateSubjectTarget(subject.id, 'targetWeight', Number(e.target.value))}
-                        className="w-14 bg-white border border-slate-300 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-semibold text-slate-700"
+                        onChange={(e) => handleUpdateSubjectTarget(subject.id, 'targetWeight', e.target.value === '' ? undefined : Number(e.target.value) as any)}
+                        className="w-14 bg-white border border-slate-300 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold text-slate-700"
                       />
                     </div>
                   </div>
+                  <div className="h-8 w-px bg-slate-200 mx-1"></div>
                   <div className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] text-orange-600 uppercase font-bold" title="How much the Midterm result contributes to this subject's final grade (e.g. 20%)">Midterm Contrib %</span>
+                    <input 
+                      type="number"
+                      min="0"
+                      value={subject.fullModeMidtermWeight ?? ''}
+                      onChange={(e) => handleUpdateSubjectTarget(subject.id, 'fullModeMidtermWeight' as any, e.target.value === '' ? undefined : Number(e.target.value) as any)}
+                      className="w-14 bg-orange-50 border border-orange-200 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold text-orange-700"
+                    />
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] text-teal-600 uppercase font-bold" title="How much the Final Test result contributes to this subject's final grade (e.g. 80%)">Final Contrib %</span>
+                    <input 
+                      type="number"
+                      min="0"
+                      value={subject.fullModeFinalWeight ?? ''}
+                      onChange={(e) => handleUpdateSubjectTarget(subject.id, 'fullModeFinalWeight' as any, e.target.value === '' ? undefined : Number(e.target.value) as any)}
+                      className="w-14 bg-teal-50 border border-teal-200 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold text-teal-700"
+                    />
+                  </div>
+                  <div className="h-8 w-px bg-slate-200 mx-1 hidden"></div>
+                  <div className="flex flex-col items-center gap-1 hidden">
                     <span className="text-[10px] text-blue-500 uppercase font-bold" title="Midterm weight">Mid %</span>
                     <div className="relative">
                       <input 
                         type="number"
                         min="0"
                         value={subject.midtermTargetWeight ?? ''}
-                        onChange={(e) => handleUpdateSubjectTarget(subject.id, 'midtermTargetWeight', Number(e.target.value))}
+                        onChange={(e) => handleUpdateSubjectTarget(subject.id, 'midtermTargetWeight', e.target.value === '' ? undefined : Number(e.target.value) as any)}
                         className="w-14 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-semibold text-blue-700"
                       />
                     </div>
                   </div>
-                  <div className="flex flex-col items-center gap-1">
+                  <div className="flex flex-col items-center gap-1 hidden">
                     <span className="text-[10px] text-purple-500 uppercase font-bold" title="Final weight">Final %</span>
                     <div className="relative">
                       <input 
                         type="number"
                         min="0"
                         value={subject.finalTargetWeight ?? ''}
-                        onChange={(e) => handleUpdateSubjectTarget(subject.id, 'finalTargetWeight', Number(e.target.value))}
+                        onChange={(e) => handleUpdateSubjectTarget(subject.id, 'finalTargetWeight', e.target.value === '' ? undefined : Number(e.target.value) as any)}
                         className="w-14 bg-purple-50 border border-purple-200 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-semibold text-purple-700"
                       />
                     </div>
@@ -479,8 +509,8 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                     <input 
                       type="number"
                       min="1"
-                      value={subject.midtermMaxScore ?? 100}
-                      onChange={(e) => handleUpdateSubjectTarget(subject.id, 'midtermMaxScore' as any, Number(e.target.value))}
+                      value={subject.midtermMaxScore ?? ''}
+                      onChange={(e) => handleUpdateSubjectTarget(subject.id, 'midtermMaxScore' as any, e.target.value === '' ? undefined : Number(e.target.value) as any)}
                       className="w-14 bg-blue-100/50 border border-blue-300 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold text-blue-800"
                     />
                   </div>
@@ -489,34 +519,23 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                     <input 
                       type="number"
                       min="1"
-                      value={subject.finalMaxScore ?? 100}
-                      onChange={(e) => handleUpdateSubjectTarget(subject.id, 'finalMaxScore' as any, Number(e.target.value))}
+                      value={subject.finalMaxScore ?? ''}
+                      onChange={(e) => handleUpdateSubjectTarget(subject.id, 'finalMaxScore' as any, e.target.value === '' ? undefined : Number(e.target.value) as any)}
                       className="w-14 bg-purple-100/50 border border-purple-300 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold text-purple-800"
-                    />
-                  </div>
-                  <div className="h-8 w-px bg-slate-200 mx-1"></div>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-orange-600 uppercase font-bold" title="Midterm weight in Full Mode">Full Mid %</span>
-                    <input 
-                      type="number"
-                      min="0"
-                      value={subject.fullModeMidtermWeight ?? ''}
-                      onChange={(e) => handleUpdateSubjectTarget(subject.id, 'fullModeMidtermWeight' as any, Number(e.target.value))}
-                      className="w-14 bg-orange-50 border border-orange-200 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold text-orange-700"
-                    />
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-teal-600 uppercase font-bold" title="Final weight in Full Mode">Full Fin %</span>
-                    <input 
-                      type="number"
-                      min="0"
-                      value={subject.fullModeFinalWeight ?? ''}
-                      onChange={(e) => handleUpdateSubjectTarget(subject.id, 'fullModeFinalWeight' as any, Number(e.target.value))}
-                      className="w-14 bg-teal-50 border border-teal-200 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold text-teal-700"
                     />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                    midSum !== 100 ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-green-50 text-green-700 border-green-200'
+                  }`} title="Sum of weights for categories included in Midterm Test">
+                    Mid Sum: {midSum}%
+                  </span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                    finSum !== 100 ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-green-50 text-green-700 border-green-200'
+                  }`} title="Sum of weights for categories included in Final Test">
+                    Fin Sum: {finSum}%
+                  </span>
                   <span className={`text-xs font-semibold px-2 py-1 rounded-md whitespace-nowrap ${
                     subjectWeight !== 100
                       ? 'bg-red-100 text-red-700 border border-red-200' 
@@ -540,9 +559,9 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                   {subject.categories.length > 0 ? (
                     <div className="space-y-2">
                       {subject.categories.map(category => {
-                        const isMid = isMidtermCategory(category) && typeof subject.fullModeMidtermWeight === 'number';
-                        const isFin = isFinalCategory(category) && typeof subject.fullModeFinalWeight === 'number';
-                        const isLocked = isMid || isFin;
+                        const isMid = !!category.isMidterm;
+                        const isFin = !!category.isFinal;
+                        const isLocked = (isMid && typeof subject.fullModeMidtermWeight === 'number') || (isFin && typeof subject.fullModeFinalWeight === 'number');
 
                         let borderClass = "border-slate-100 bg-slate-50";
                         if (isMid) {
@@ -562,7 +581,7 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                                 placeholder="Category (e.g., Quizzes)"
                                 disabled={isLocked}
                               />
-                              <div className="flex items-center gap-3 mt-1.5 px-1">
+                              <div className="flex items-center gap-3 mt-1.5 px-1 hidden">
                                 <label className="text-[10px] text-slate-500 flex items-center gap-1 cursor-pointer font-medium hover:text-slate-700">
                                   <input 
                                     type="checkbox" 
@@ -588,117 +607,89 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
                               <input
                                 type="number"
                                 min="1"
-                                value={category.itemCount}
-                                onChange={(e) => handleUpdateCategory(subject.id, category.id, 'itemCount', Number(e.target.value))}
+                                value={category.itemCount ?? ''}
+                                onChange={(e) => handleUpdateCategory(subject.id, category.id, 'itemCount', e.target.value === '' ? undefined : Number(e.target.value))}
                                 className="w-full bg-white border border-slate-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
                                 title="Number of items (e.g., 5 quizzes)"
                               />
                             </div>
                             <div className="w-20 relative flex flex-col items-center gap-1">
-                              <span 
-                                className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-0.5 cursor-help hover:text-blue-600 transition-colors" 
-                                title="This is the weight (percentage) of this category toward the final Full Term grade (1-100%). Click for more info."
-                                onClick={() => {
-                                  alert("FULL WT %: This is the weight (percentage) of this category toward the final Full Term grade. For example, if it's 10%, this category accounts for 10% of the total score for this subject in the Full Term view.");
+                              <span className="text-[10px] text-slate-500 uppercase font-bold" title="Weight of this category in Full Term">Weight %</span>
+                              <div className="relative w-full">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={category.weight ?? ''}
+                                  onChange={(e) => handleUpdateCategory(subject.id, category.id, 'weight', e.target.value === '' ? undefined : Number(e.target.value))}
+                                  className="w-full bg-white border border-slate-300 rounded-md pl-5 pr-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-semibold"
+                                />
+                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">W</span>
+                              </div>
+                            </div>
+
+                            <div className="w-16 relative flex flex-col items-center gap-1">
+                              <span className="text-[10px] text-blue-500 uppercase font-bold">Mid Wt%</span>
+                              <input 
+                                type="number"
+                                min="0"
+                                value={category.midtermWeight ?? ''}
+                                onChange={(e) => handleUpdateCategory(subject.id, category.id, 'midtermWeight', e.target.value === '' ? undefined : Number(e.target.value))}
+                                className={`w-full border rounded-md px-1 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold ${
+                                  !!category.isMidterm ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-100 text-slate-300'
+                                }`}
+                                placeholder="-"
+                              />
+                            </div>
+
+                            <div className="w-12 relative flex flex-col items-center gap-1">
+                              <span className="text-[10px] text-blue-500 uppercase font-bold">Mid</span>
+                              <input 
+                                type="checkbox"
+                                checked={!!category.isMidterm}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  handleUpdateCategory(subject.id, category.id, 'isMidterm', checked);
+                                  if (checked && category.midtermWeight === undefined) {
+                                    handleUpdateCategory(subject.id, category.id, 'midtermWeight', category.weight || 0);
+                                  }
+                                  // We do NOT set midtermWeight to undefined when unchecking, 
+                                  // because isMidterm=false already excludes it from midterm mode.
                                 }}
-                              >
-                                {isLocked && <Lock className="w-2.5 h-2.5 text-slate-400" />}
-                                Full Wt %
-                              </span>
-                              <div className="relative w-full">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={category.weight}
-                                  disabled={isLocked}
-                                  onChange={(e) => handleUpdateCategory(subject.id, category.id, 'weight', Number(e.target.value))}
-                                  className={`w-full border rounded-md px-1 py-1 text-xs text-center focus:outline-none ${
-                                    isLocked
-                                      ? 'bg-slate-100 text-slate-500 border-slate-200 font-bold cursor-not-allowed'
-                                      : 'bg-white border-slate-300 focus:ring-2 focus:ring-blue-500'
-                                  }`}
-                                  title={isLocked ? `This weight is locked to the Subject's ${isMid ? "Full Mid %" : "Full Fin %"} set above (${category.weight}%)` : ""}
-                                />
-                              </div>
+                                className="w-5 h-5 rounded text-blue-600 border-blue-300 focus:ring-blue-500"
+                              />
                             </div>
 
-                            <div className="w-20 relative flex flex-col items-center gap-1">
-                              <span className="text-[10px] text-blue-500 uppercase font-bold flex items-center gap-1" title="Category weight specifically for Mid-term mode">
-                                <input 
-                                  type="checkbox"
-                                  checked={category.midtermWeight !== undefined}
-                                  onChange={(e) => handleUpdateCategory(subject.id, category.id, 'midtermWeight', e.target.checked ? (category.weight || 0) : undefined)}
-                                  className="w-3 h-3 rounded text-blue-600 border-blue-300"
-                                />
-                                Mid %
-                              </span>
-                              <div className="relative w-full">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={category.midtermWeight ?? ''}
-                                  disabled={category.midtermWeight === undefined}
-                                  onChange={(e) => handleUpdateCategory(subject.id, category.id, 'midtermWeight', e.target.value === '' ? 0 : Number(e.target.value))}
-                                  className={`w-full border rounded-md px-1 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium ${
-                                    category.midtermWeight === undefined ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed' : 'bg-blue-50 border-blue-200 text-blue-700'
-                                  }`}
-                                  placeholder="Off"
-                                />
-                              </div>
+                            <div className="w-16 relative flex flex-col items-center gap-1">
+                              <span className="text-[10px] text-purple-500 uppercase font-bold">Fin Wt%</span>
+                              <input 
+                                type="number"
+                                min="0"
+                                value={category.finalWeight ?? ''}
+                                onChange={(e) => handleUpdateCategory(subject.id, category.id, 'finalWeight', e.target.value === '' ? undefined : Number(e.target.value))}
+                                className={`w-full border rounded-md px-1 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold ${
+                                  !!category.isFinal ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-slate-50 border-slate-100 text-slate-300'
+                                }`}
+                                placeholder="-"
+                              />
                             </div>
 
-                            <div className="w-20 relative flex flex-col items-center gap-1">
-                              <span className="text-[10px] text-purple-500 uppercase font-bold flex items-center gap-1" title="Category weight specifically for Final Test mode">
-                                <input 
-                                  type="checkbox"
-                                  checked={category.finalWeight !== undefined}
-                                  onChange={(e) => handleUpdateCategory(subject.id, category.id, 'finalWeight', e.target.checked ? (category.weight || 0) : undefined)}
-                                  className="w-3 h-3 rounded text-purple-600 border-purple-300"
-                                />
-                                Fin %
-                              </span>
-                              <div className="relative w-full">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={category.finalWeight ?? ''}
-                                  disabled={category.finalWeight === undefined}
-                                  onChange={(e) => handleUpdateCategory(subject.id, category.id, 'finalWeight', e.target.value === '' ? 0 : Number(e.target.value))}
-                                  className={`w-full border rounded-md px-1 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium ${
-                                    category.finalWeight === undefined ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed' : 'bg-purple-50 border-purple-200 text-purple-700'
-                                  }`}
-                                  placeholder="Off"
-                                />
-                              </div>
+                            <div className="w-12 relative flex flex-col items-center gap-1">
+                              <span className="text-[10px] text-purple-500 uppercase font-bold">Final</span>
+                              <input 
+                                type="checkbox"
+                                checked={!!category.isFinal}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  handleUpdateCategory(subject.id, category.id, 'isFinal', checked);
+                                  if (checked && category.finalWeight === undefined) {
+                                    handleUpdateCategory(subject.id, category.id, 'finalWeight', category.weight || 0);
+                                  }
+                                }}
+                                className="w-5 h-5 rounded text-purple-600 border-purple-300 focus:ring-blue-500"
+                              />
                             </div>
-                            <div className="flex flex-col gap-1">
-                              {isLocked && (
-                                <button
-                                  onClick={() => {
-                                    const catName = prompt(`Enter sub-category name for ${isMid ? 'Midterm' : 'Final'}:`);
-                                    if (catName) {
-                                      const newCat: Category = {
-                                        id: Math.random().toString(36).substr(2, 9),
-                                        name: catName,
-                                        weight: 0,
-                                        itemCount: 1,
-                                        itemMaxScores: [100],
-                                        ...(isMid ? { midtermWeight: 100 } : {}),
-                                        ...(isFin ? { finalWeight: 100 } : {}),
-                                      };
-                                      const updatedSubjects = level.subjects.map(s => {
-                                        if (s.id !== subject.id) return s;
-                                        return { ...s, categories: [...s.categories, newCat] };
-                                      });
-                                      onUpdateLevel({ ...level, subjects: updatedSubjects });
-                                    }
-                                  }}
-                                  className="p-1.5 text-blue-500 hover:text-blue-700 rounded-md hover:bg-blue-50 transition-colors"
-                                  title="Add category for this test"
-                                >
-                                  <Plus className="w-4 h-4" />
-                                </button>
-                              )}
+
+                            <div className="flex items-center gap-1">
                               {!isLocked && (
                                 <button
                                   onClick={() => handleDeleteCategory(subject.id, category.id)}
