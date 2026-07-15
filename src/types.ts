@@ -38,6 +38,8 @@ export interface Level {
   id: string;
   name: string;
   program?: string;
+  term?: string;
+  year?: string;
   isArchived?: boolean;
   subjects: Subject[];
   gradingScale: GradingScale[];

@@ -32,6 +32,8 @@ import {
   RefreshCw,
   Clipboard,
   SlidersHorizontal,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import {
   Level,
@@ -257,76 +259,75 @@ const SAMPLE_5_SUBJECTS: Level = {
 
 const DEFAULT_LEVELS: Level[] = [
   {
-    id: "l1",
-    name: "Level 1A",
+    id: "pte_foundation_a",
+    name: "Level Foundation A",
     gradingScale: DEFAULT_GRADING_SCALE,
+    program: "Part-time English",
     subjects: [
       {
-        id: "s_alphabets_1a",
-        name: "ALPHABETS",
-        targetWeight: 50,
+        id: "fa_eng",
+        name: "English",
+        targetWeight: 100,
         categories: [
-          { id: "c_dict_1a", name: "Alphabet Dict.", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_rec_1a", name: "Alphabet Recogn.", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_sound_1a", name: "Alphabet Sounds", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_writ_1a", name: "Alphabet Writ.", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_trac_1a", name: "Alphabet and W. Trac.", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_shape_1a", name: "Shape Tracing", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_vocab_1a", name: "Vocabulary", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_song_1a", name: "Alphabet Song", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-        ],
-      },
-      {
-        id: "s_conv_1a",
-        name: "CONVERSATION",
-        targetWeight: 50,
-        categories: [
-          { id: "c_conv_1a", name: "Conversation", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-        ],
-      },
-    ],
+          { id: "fa_voc", name: "Vocabulary", weight: 40, itemCount: 1, itemMaxScores: [100] },
+          { id: "fa_dict", name: "Dictation", weight: 10, itemCount: 1, itemMaxScores: [100] },
+          { id: "fa_spe", name: "Speaking", weight: 50, itemCount: 1, itemMaxScores: [100] }
+        ]
+      }
+    ]
   },
   {
-    id: "l2",
-    name: "Level 1B",
+    id: "fte_2a",
+    name: "Level 2A",
     gradingScale: DEFAULT_GRADING_SCALE,
+    program: "Full-time English",
     subjects: [
       {
-        id: "s_alphabets_1b",
-        name: "ALPHABETS",
-        targetWeight: 50,
+        id: "fte_2a_read",
+        name: "Reading",
+        targetWeight: 100,
         categories: [
-          { id: "c_dict_1b", name: "Alphabet Dict.", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_rec_1b", name: "Alphabet Recogn.", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_sound_1b", name: "Alphabet Sounds", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_writ_1b", name: "Alphabet Writ.", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_trac_1b", name: "Alphabet and W. Trac.", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_shape_1b", name: "Shape Tracing", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_vocab_1b", name: "Vocabulary", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-          { id: "c_song_1b", name: "Alphabet Song", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-        ],
+          { id: "fte_2a_read_wq", name: "Weekly Quiz", weight: 20, itemCount: 5, itemMaxScores: [100,100,100,100,100] },
+          { id: "fte_2a_read_mt", name: "Midterm", weight: 30, itemCount: 1, itemMaxScores: [100], isMidterm: true },
+          { id: "fte_2a_read_ft", name: "Final", weight: 50, itemCount: 1, itemMaxScores: [100], isFinal: true }
+        ]
+      }
+    ]
+  },
+  {
+    id: "khmer_l1",
+    name: "Khmer Level 1",
+    gradingScale: DEFAULT_GRADING_SCALE,
+    program: "Khmer Program",
+    subjects: [
+      {
+        id: "khmer_l1_reading",
+        name: "Reading",
+        targetWeight: 50,
+        categories: [{ id: "khmer_l1_read_main", name: "Reading", weight: 100, itemCount: 1, itemMaxScores: [100] }]
       },
       {
-        id: "s_conv_1b",
-        name: "CONVERSATION",
+        id: "khmer_l1_writing",
+        name: "Writing",
         targetWeight: 50,
-        categories: [
-          { id: "c_conv_1b", name: "Conversation", weight: 100, midtermWeight: 100, finalWeight: 100, itemCount: 1, itemMaxScores: [100] },
-        ],
-      },
-    ],
+        categories: [{ id: "khmer_l1_writ_main", name: "Writing", weight: 100, itemCount: 1, itemMaxScores: [100] }]
+      }
+    ]
   },
-  { id: "l3", name: "Level Pre 2AI", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
-  { id: "l4", name: "Level Pre 2AII", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
-  { id: "l5", name: "Level 2A", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
-  { id: "l6", name: "Level 2B", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
-  { id: "l7", name: "Level 3A", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
-  { id: "l8", name: "Level 3B", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
-  { id: "l9", name: "Level 4A", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
-  { id: "l10", name: "Level 4B", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
-  { id: "l11", name: "Level 5A", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
-  { id: "l12", name: "Level 5B", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
-  { id: "foundation_a", name: "Level Foundation A", subjects: [], gradingScale: DEFAULT_GRADING_SCALE, program: "English Program" },
+  {
+    id: "math_l1",
+    name: "Math Level 1",
+    gradingScale: DEFAULT_GRADING_SCALE,
+    program: "Math Program",
+    subjects: [
+      {
+        id: "math_l1_main",
+        name: "Math",
+        targetWeight: 100,
+        categories: [{ id: "math_l1_cat", name: "Math Quiz", weight: 100, itemCount: 1, itemMaxScores: [100] }]
+      }
+    ]
+  }
 ];
 
 const LEVEL_ORDER = [
@@ -454,6 +455,11 @@ export default function App() {
   const [selectedTeacher, setSelectedTeacher] = useState<string>(() => {
     return localStorage.getItem("gradecalc_selected_teacher") || "all";
   });
+
+  const [selectedProgram, setSelectedProgram] = useState<string>("all");
+  const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [selectedTerm, setSelectedTerm] = useState<string>("all");
+  const [showArchived, setShowArchived] = useState<boolean>(false);
 
   const [unlockedClassIds, setUnlockedClassIds] = useState<string[]>(() => {
     try {
@@ -804,9 +810,37 @@ export default function App() {
         isPinned: pinnedIds.includes(cr.id),
       }))
       .filter((cr) => {
+        const lvl = levels.find(l => l.id === cr.levelId);
+        
+        // Archive Filter
+        if (!showArchived && lvl?.isArchived) {
+          return false;
+        }
+
         // Teacher Filter
         if (selectedTeacher !== "all") {
           if ((cr.teacherName || "").toLowerCase() !== selectedTeacher.toLowerCase()) {
+            return false;
+          }
+        }
+
+        // Program Filter
+        if (selectedProgram !== "all") {
+          if ((lvl?.program || "").toLowerCase() !== selectedProgram.toLowerCase()) {
+            return false;
+          }
+        }
+
+        // Year Filter
+        if (selectedYear !== "all") {
+          if ((lvl?.year || "").toLowerCase() !== selectedYear.toLowerCase()) {
+            return false;
+          }
+        }
+
+        // Term Filter
+        if (selectedTerm !== "all") {
+          if ((lvl?.term || "").toLowerCase() !== selectedTerm.toLowerCase()) {
             return false;
           }
         }
@@ -816,9 +850,7 @@ export default function App() {
           cr.className.toLowerCase().includes(query) ||
           cr.teacherName.toLowerCase().includes(query) ||
           cr.termName.toLowerCase().includes(query) ||
-          (
-            levels.find((l) => l.id === cr.levelId)?.name.toLowerCase() || ""
-          ).includes(query)
+          (lvl?.name.toLowerCase() || "").includes(query)
         );
       });
 
@@ -835,7 +867,7 @@ export default function App() {
 
       return a.className.localeCompare(b.className);
     });
-  }, [classRecords, levels, searchQuery, pinnedIds, accessCode, classSortBy, selectedTeacher]);
+  }, [classRecords, levels, searchQuery, pinnedIds, accessCode, classSortBy, selectedTeacher, selectedProgram, selectedYear, selectedTerm, showArchived]);
 
   const activeClasses = useMemo(() => {
     return classRecords.filter((cr) => !cr.isDeleted);
@@ -1595,6 +1627,36 @@ export default function App() {
     return Array.from(teachersSet).sort();
   }, [classRecords]);
 
+  const uniquePrograms = useMemo(() => {
+    const programsSet = new Set<string>();
+    levels.forEach((l) => {
+      if (l.program && l.program.trim()) {
+        programsSet.add(l.program.trim());
+      }
+    });
+    return Array.from(programsSet).sort();
+  }, [levels]);
+
+  const uniqueYears = useMemo(() => {
+    const yearsSet = new Set<string>();
+    levels.forEach((l) => {
+      if (l.year && l.year.trim()) {
+        yearsSet.add(l.year.trim());
+      }
+    });
+    return Array.from(yearsSet).sort();
+  }, [levels]);
+
+  const uniqueTerms = useMemo(() => {
+    const termsSet = new Set<string>();
+    levels.forEach((l) => {
+      if (l.term && l.term.trim()) {
+        termsSet.add(l.term.trim());
+      }
+    });
+    return Array.from(termsSet).sort();
+  }, [levels]);
+
   // Skip auth checks for now
   if (false && authLoading) {
     return (
@@ -1773,7 +1835,7 @@ export default function App() {
                     localStorage.setItem("gradecalc_selected_teacher", e.target.value);
                   }}
                   className="px-2 py-1.5 text-xs font-bold text-slate-700 bg-slate-50 border-r border-slate-200 focus:ring-0 cursor-pointer outline-none min-w-[100px] max-w-[140px] truncate"
-                  title="Filter classes by teacher"
+                  title="Filter by teacher"
                 >
                   <option value="all">All Teachers</option>
                   {uniqueTeachers.map((t) => (
@@ -1782,7 +1844,59 @@ export default function App() {
                     </option>
                   ))}
                 </select>
+                <select
+                  value={selectedProgram}
+                  onChange={(e) => setSelectedProgram(e.target.value)}
+                  className="px-2 py-1.5 text-xs font-bold text-slate-700 bg-white border-r border-slate-200 focus:ring-0 cursor-pointer outline-none min-w-[100px] max-w-[140px] truncate"
+                  title="Filter by program"
+                >
+                  <option value="all">All Programs</option>
+                  {uniquePrograms.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="px-2 py-1.5 text-xs font-bold text-slate-700 bg-white border-r border-slate-200 focus:ring-0 cursor-pointer outline-none w-20 truncate"
+                  title="Filter by year"
+                >
+                  <option value="all">Year</option>
+                  {uniqueYears.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedTerm}
+                  onChange={(e) => setSelectedTerm(e.target.value)}
+                  className="px-2 py-1.5 text-xs font-bold text-slate-700 bg-white focus:ring-0 cursor-pointer outline-none w-20 truncate"
+                  title="Filter by term"
+                >
+                  <option value="all">Term</option>
+                  {uniqueTerms.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              <button
+                onClick={() => setShowArchived(!showArchived)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-black rounded-lg border transition-all ${
+                  showArchived 
+                    ? "bg-orange-100 text-orange-700 border-orange-200" 
+                    : "bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600 hover:border-slate-300"
+                }`}
+                title={showArchived ? "Hiding archived levels" : "Showing archived levels"}
+              >
+                {showArchived ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                ARCHIVED
+              </button>
 
               {/* Sort selector segmented buttons */}
               <div className="flex items-center bg-slate-100 border border-slate-200 rounded-lg p-0.5 text-[10px] mr-1 shadow-inner select-none shrink-0">

@@ -527,6 +527,45 @@ export const SYSTEM_TEMPLATES = [
     id: 'part-time-english',
     name: 'Part-Time English Program',
     authorName: 'System',
+    levels: [
+      {
+        id: 'pte_foundation_a',
+        name: 'Level Foundation A',
+        gradingScale: [
+          { grade: 'A', minScore: 90 },
+          { grade: 'B', minScore: 80 },
+          { grade: 'C', minScore: 70 },
+          { grade: 'D', minScore: 60 },
+          { grade: 'E', minScore: 50 },
+          { grade: 'F', minScore: 0 }
+        ],
+        subjects: [
+          {
+            id: 'pte_fa_eng',
+            name: 'English',
+            targetWeight: 100,
+            midtermTargetWeight: 100,
+            finalTargetWeight: 100,
+            categories: [
+              { id: 'pte_fa_eng_voc', name: 'Vocabulary', weight: 40, itemCount: 1, itemMaxScores: [100] },
+              { id: 'pte_fa_eng_dict', name: 'Dictation', weight: 10, itemCount: 1, itemMaxScores: [100] },
+              { id: 'pte_fa_eng_spe', name: 'Speaking', weight: 50, itemCount: 1, itemMaxScores: [100] }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'era-program',
+    name: 'ERA Program',
+    authorName: 'System',
+    levels: []
+  },
+  {
+    id: 'level-foundation-program',
+    name: 'Level Foundation Program',
+    authorName: 'System',
     levels: []
   },
   {

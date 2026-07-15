@@ -388,35 +388,59 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
         {!isLocked && (
           <div className="space-y-4 mb-6">
             <div className="bg-white border border-slate-200 rounded-xl p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                    English Program / Category
+                    Program
                   </label>
                   <input
                     type="text"
                     list="program-list"
                     value={level.program || ''}
                     onChange={(e) => onUpdateLevel({ ...level, program: e.target.value })}
-                    placeholder="e.g. English Program, Foundation A"
+                    placeholder="e.g. Part-time English"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
                   />
                   <datalist id="program-list">
-                    <option value="English Program" />
-                    <option value="Foundation A" />
-                    <option value="Young Learners" />
-                    <option value="General English" />
+                    <option value="English" />
+                    <option value="Full-time English" />
+                    <option value="Part-time English program" />
+                    <option value="Khmer program" />
+                    <option value="Math program" />
+                    <option value="ERA program" />
+                    <option value="Level Foundation program" />
                   </datalist>
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
+                    Term / Year
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={level.term || ''}
+                      onChange={(e) => onUpdateLevel({ ...level, term: e.target.value })}
+                      placeholder="Term (e.g. Term 1)"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                    />
+                    <input
+                      type="text"
+                      value={level.year || ''}
+                      onChange={(e) => onUpdateLevel({ ...level, year: e.target.value })}
+                      placeholder="Year (e.g. 2024)"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-4 py-2">
                   <div>
                     <h4 className="text-sm font-bold text-slate-800">Archive Level</h4>
-                    <p className="text-[10px] text-slate-500">Hide from active lists but keep data.</p>
+                    <p className="text-[10px] text-slate-500">Hide from active lists.</p>
                   </div>
                   <button
                     onClick={() => onUpdateLevel({ ...level, isArchived: !level.isArchived })}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                      level.isArchived ? 'bg-orange-500' : 'bg-slate-300'
+                      level.isArchived ? 'bg-orange-500' : 'bg-slate-200'
                     }`}
                   >
                     <span

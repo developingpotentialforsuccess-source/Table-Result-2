@@ -1116,7 +1116,7 @@ export default function GradeTable({
 
         const effectiveDivisor = 100; // Total mode: default to 100 base
 
-        const performancePct = totalWeightedSum; // Total mode: sum of all weighted points
+        const performancePct = totalWeightSum > 0 ? (totalWeightedSum / totalWeightSum) * 100 : 0;
       return { 
         id: student.id, 
         finalScore: performancePct, 
@@ -1521,15 +1521,11 @@ export default function GradeTable({
               <>
                 <th
                   rowSpan={resultMode === 'full' ? 3 : 2}
-                  className={`px-4 py-3 font-bold border-l ${gridStyles.totalBorderClass} text-center shadow-[-1px_0_0_0_#cbd5e1] cursor-pointer transition-colors ${
-                    resultMode === 'midterm' ? 'bg-blue-100 hover:bg-blue-200' : 
-                    resultMode === 'final' ? 'bg-purple-100 hover:bg-purple-200' : 
-                    'bg-blue-50 hover:bg-blue-100'
-                  }`}
+                  className={`px-4 py-3 font-bold border-l ${gridStyles.totalBorderClass} text-center shadow-[-1px_0_0_0_#fdba74] cursor-pointer transition-colors bg-orange-100 text-orange-950 hover:bg-orange-200`}
                   onClick={() => handleSort("finalScore")}
                 >
                   <div className="flex items-center justify-center gap-1">
-                    {resultMode === 'midterm' ? 'TOTAL W' : (resultMode === 'final' ? 'TOTAL W' : 'TOTAL RESULT')} <ArrowUpDown className={`w-3 h-3 ${resultMode === 'final' ? 'text-purple-400' : 'text-blue-400'}`} />
+                    {resultMode === 'midterm' ? 'TOTAL %' : (resultMode === 'final' ? 'TOTAL %' : 'TOTAL %')} <ArrowUpDown className={`w-3 h-3 ${resultMode === 'final' ? 'text-purple-400' : 'text-blue-400'}`} />
                   </div>
                 </th>
                 <th
@@ -2246,12 +2242,12 @@ export default function GradeTable({
                 {level.subjects.length > 0 && (
                   <>
                     {(() => {
-                      const style = getManualStyle('avg', scoreColor, scoreBg);
+                      const style = getManualStyle('avg', 'text-orange-900', 'bg-orange-50');
                       return (
-                        <td className={`px-2 py-2 ${style.bgClass} font-bold text-center border-l border-b ${style.borderClass} shadow-[-1px_0_0_0_#eff6ff] text-sm ${style.textClass}`}>
+                        <td className={`px-2 py-2 ${style.bgClass} font-bold text-center border-l border-b ${gridStyles.totalBorderClass} shadow-[-1px_0_0_0_#fff7ed] text-sm ${style.textClass}`}>
                           <div className="flex flex-col items-center">
-                            <span title="Average performance (100% scale)">
-                              {metrics.performancePct.toFixed(1)}
+                            <span title="Overall Percentage Score (Weighted Average)">
+                              {metrics.performancePct.toFixed(1)}%
                             </span>
                           </div>
                         </td>
