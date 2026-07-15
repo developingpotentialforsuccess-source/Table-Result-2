@@ -307,14 +307,27 @@ function createSheetData(wb: ExcelJS.Workbook, currentRecord: ClassRecord, curre
   ws.getCell(`B${footerRow+1}`).value = "1) Phonics";
   ws.getCell(`B${footerRow+1}`).font = { name: 'Times New Roman' };
   
-  ws.getCell(`B${footerRow+3}`).value = "Abbreviations:";
-  ws.getCell(`B${footerRow+3}`).font = { bold: true, name: 'Times New Roman' };
-  ws.getCell(`B${footerRow+4}`).value = "Alphabet Dict.: Alphabet Dictation";
-  ws.getCell(`B${footerRow+5}`).value = "Alphabet Recogn.: Alphabet Recognition";
-  ws.getCell(`B${footerRow+6}`).value = "Alphabet Writ.: Alphabet Writing";
-  ws.getCell(`B${footerRow+7}`).value = "Alphabet and W. Trac.: Alphabet and Word Tracing";
-  ws.getCell(`B${footerRow+8}`).value = "Individual Speak.: Individual Speaking";
-  ws.getCell(`B${footerRow+9}`).value = "Pair Conver.: Pair Conversation";
+  const allNames = currentLevel.subjects.flatMap(s => [s.name, ...s.categories.map(c => c.name)]).join(' ');
+  const abbreviationDefinitions = [
+    { key: "Alphabet Dict.", value: "Alphabet Dict.: Alphabet Dictation" },
+    { key: "Alphabet Recogn.", value: "Alphabet Recogn.: Alphabet Recognition" },
+    { key: "Alphabet Writ.", value: "Alphabet Writ.: Alphabet Writing" },
+    { key: "Alphabet and W. Trac.", value: "Alphabet and W. Trac.: Alphabet and Word Tracing" },
+    { key: "Individual Speak.", value: "Individual Speak.: Individual Speaking" },
+    { key: "Pair Conver.", value: "Pair Conver.: Pair Conversation" }
+  ];
+  const activeAbbreviations = abbreviationDefinitions.filter(abb => 
+    allNames.includes(abb.key)
+  );
+
+  if (activeAbbreviations.length > 0) {
+    ws.getCell(`B${footerRow+3}`).value = "Abbreviations:";
+    ws.getCell(`B${footerRow+3}`).font = { bold: true, name: 'Times New Roman' };
+    activeAbbreviations.forEach((abb, idx) => {
+      ws.getCell(`B${footerRow+4+idx}`).value = abb.value;
+      ws.getCell(`B${footerRow+4+idx}`).font = { name: 'Times New Roman' };
+    });
+  }
   
   // right side of footer (moved further right to align with right edge)
   const signCol = Math.max(endCol - 1, 4);

@@ -386,27 +386,71 @@ export default function LevelSettings({ level, onUpdateLevel, onClose, hideHeade
         )}
         
         {!isLocked && (
-          <div className="bg-white border border-slate-200 rounded-xl p-4 mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-medium text-slate-800">Attendance Config (Standalone)</h4>
-                <p className="text-xs text-slate-500 mt-1">Set the weight of attendance in the final term result (e.g. 10%). Leave blank for 0%.</p>
+          <div className="space-y-4 mb-6">
+            <div className="bg-white border border-slate-200 rounded-xl p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
+                    English Program / Category
+                  </label>
+                  <input
+                    type="text"
+                    list="program-list"
+                    value={level.program || ''}
+                    onChange={(e) => onUpdateLevel({ ...level, program: e.target.value })}
+                    placeholder="e.g. English Program, Foundation A"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                  />
+                  <datalist id="program-list">
+                    <option value="English Program" />
+                    <option value="Foundation A" />
+                    <option value="Young Learners" />
+                    <option value="General English" />
+                  </datalist>
+                </div>
+                <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-4 py-2">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800">Archive Level</h4>
+                    <p className="text-[10px] text-slate-500">Hide from active lists but keep data.</p>
+                  </div>
+                  <button
+                    onClick={() => onUpdateLevel({ ...level, isArchived: !level.isArchived })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                      level.isArchived ? 'bg-orange-500' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        level.isArchived ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-600">Weight:</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={level.attendanceWeight ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? undefined : Number(e.target.value);
-                    if (onUpdateLevel) onUpdateLevel({ ...level, attendanceWeight: val });
-                  }}
-                  className="w-16 bg-slate-50 border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold"
-                  placeholder="0"
-                />
-                <span className="text-slate-500 text-sm font-medium">%</span>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-slate-800">Attendance Config (Standalone)</h4>
+                  <p className="text-xs text-slate-500 mt-1">Set the weight of attendance in the final term result (e.g. 10%). Leave blank for 0%.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-slate-600">Weight:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={level.attendanceWeight ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? undefined : Number(e.target.value);
+                      if (onUpdateLevel) onUpdateLevel({ ...level, attendanceWeight: val });
+                    }}
+                    className="w-16 bg-slate-50 border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold"
+                    placeholder="0"
+                  />
+                  <span className="text-slate-500 text-sm font-medium">%</span>
+                </div>
               </div>
             </div>
           </div>

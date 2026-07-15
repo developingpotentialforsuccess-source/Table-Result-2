@@ -754,19 +754,6 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                     <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors">
                       <input 
                         type="checkbox" 
-                        checked={settings.showCategoryWeight !== false}
-                        onChange={(e) => onUpdateSettings({ ...settings, showCategoryWeight: e.target.checked })}
-                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div>
-                        <span className="block text-sm font-bold text-slate-900">Show Category Weight %</span>
-                        <span className="block text-xs text-slate-500">Show the percentage weight in the category column headers (e.g. (25%))</span>
-                      </div>
-                    </label>
-
-                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors">
-                      <input 
-                        type="checkbox" 
                         checked={settings.showCategoryHideIcon !== false}
                         onChange={(e) => onUpdateSettings({ ...settings, showCategoryHideIcon: e.target.checked })}
                         className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
@@ -851,33 +838,6 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                         <span className="block text-xs text-slate-500">If checked, student average is divided by the total weight of all subjects in the level (unfilled subjects get 0%). If unchecked, average is computed only across subjects with scores.</span>
                       </div>
                     </label>
-                  </div>
-                </section>
-
-                {/* Result Column Display */}
-                <section>
-                  <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Result Column Display Mode</label>
-                  <p className="text-xs text-slate-500 mb-3">Choose what to display under the "RESULT" category column for each subject in Full Mode.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {[
-                      { id: 'avg', name: 'Average', desc: 'Show raw average % (e.g., 89.5%)' },
-                      { id: 'wtd', name: 'WTD (Weighted)', desc: 'Show weighted contribution (e.g., 17.0)' },
-                      { id: 'both', name: 'Both', desc: 'Show both Average and WTD side-by-side' }
-                    ].map((mode) => (
-                      <button
-                        key={mode.id}
-                        type="button"
-                        onClick={() => onUpdateSettings({ ...settings, resultDisplayMode: mode.id as any })}
-                        className={`p-3 text-left rounded-lg border transition-all cursor-pointer ${
-                          (settings.resultDisplayMode ?? 'both') === mode.id 
-                            ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-100' 
-                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        <span className="block text-sm font-bold text-slate-900">{mode.name}</span>
-                        <span className="block text-xs text-slate-500 mt-0.5">{mode.desc}</span>
-                      </button>
-                    ))}
                   </div>
                 </section>
 

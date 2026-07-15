@@ -3,7 +3,20 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { ClassRecord, Level, Student, calculateGrade, calculateStatus } from '../types';
 import { calculateAttendancePercentage } from './attendanceUtils';
-import { isMidtermCategory, isFinalCategory } from './categoryUtils';
+import { isMidtermCategory, isFinalCategory, getStudentScoreValue } from './categoryUtils';
+
+function getActiveAbbreviations(currentLevel: Level) {
+  const allNames = currentLevel.subjects.flatMap(s => [s.name, ...s.categories.map(c => c.name)]).join(' ');
+  const abbs = [
+    { key: "Alphabet Dict.", text: "Alphabet Dict.: Alphabet Dictation" },
+    { key: "Alphabet Recogn.", text: "Alphabet Recogn.: Alphabet Recognition" },
+    { key: "Alphabet Writ.", text: "Alphabet Writ.: Alphabet Writing" },
+    { key: "Alphabet and W. Trac.", text: "Alphabet and W. Trac.: Alphabet and Word Tracing" },
+    { key: "Individual Speak.", text: "Individual Speak.: Individual Speaking" },
+    { key: "Pair Conver.", text: "Pair Conver.: Pair Conversation" }
+  ];
+  return abbs.filter(abb => allNames.includes(abb.key));
+}
 
 export function exportToExcel(currentRecord: ClassRecord, currentLevel: Level, resultMode: 'full' | 'midterm' | 'final' = 'full', students?: Student[]) {
   const data = generateExportData(currentRecord, currentLevel, resultMode, students);
@@ -36,16 +49,27 @@ export function exportToExcel(currentRecord: ClassRecord, currentLevel: Level, r
   const today = new Date();
   const dateStr = `Date: Phnom Penh, ${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
-  const footerData = [
-    [],
-    ["Abbreviations:"],
-    ["Alphabet Dict.: Alphabet Dictation", "", "", "", "", "", dateStr],
-    ["Alphabet Recogn.: Alphabet Recognition", "", "", "", "", "", "Academic Manager"],
-    ["Alphabet Writ.: Alphabet Writing"],
-    ["Alphabet and W. Trac.: Alphabet and Word Tracing"],
-    ["Individual Speak.: Individual Speaking"],
-    ["Pair Conver.: Pair Conversation", "", "", "", "", "", "Sek Sokha"]
-  ];
+  const activeAbbs = getActiveAbbreviations(currentLevel);
+  const footerData: any[][] = [[]];
+  if (activeAbbs.length > 0) {
+    footerData.push(["Abbreviations:"]);
+    activeAbbs.forEach((abb, idx) => {
+      if (idx === 0) {
+        footerData.push([abb.text, "", "", "", "", "", dateStr]);
+      } else if (idx === 1) {
+        footerData.push([abb.text, "", "", "", "", "", "Academic Manager"]);
+      } else if (idx === activeAbbs.length - 1) {
+        footerData.push([abb.text, "", "", "", "", "", "Sek Sokha"]);
+      } else {
+        footerData.push([abb.text]);
+      }
+    });
+  } else {
+    footerData.push(["", "", "", "", "", "", dateStr]);
+    footerData.push(["", "", "", "", "", "", "Academic Manager"]);
+    footerData.push(["", "", "", "", "", "", ""]);
+    footerData.push(["", "", "", "", "", "", "Sek Sokha"]);
+  }
 
   utils.sheet_add_aoa(gradesWs, footerData, { origin: -1 });
 
@@ -158,13 +182,15 @@ export function exportToPDF(currentRecord: ClassRecord, currentLevel: Level, res
   const footerY = finalY + 12;
   
   doc.setFontSize(8);
-  doc.text("Abbreviations:", 14, footerY);
-  doc.text("Alphabet Dict.: Alphabet Dictation", 14, footerY + 4);
-  doc.text("Alphabet Recogn.: Alphabet Recognition", 14, footerY + 8);
-  doc.text("Alphabet Writ.: Alphabet Writing", 14, footerY + 12);
-  doc.text("Alphabet and W. Trac.: Alphabet and Word Tracing", 14, footerY + 16);
-  doc.text("Individual Speak.: Individual Speaking", 14, footerY + 20);
-  doc.text("Pair Conver.: Pair Conversation", 14, footerY + 24);
+  const activeAbbs = getActiveAbbreviations(currentLevel);
+  let nextY = footerY;
+  if (activeAbbs.length > 0) {
+    doc.text("Abbreviations:", 14, nextY);
+    activeAbbs.forEach(abb => {
+      nextY += 4;
+      doc.text(abb.text, 14, nextY);
+    });
+  }
 
   const rightX = 220; 
   const today = new Date();
@@ -179,9 +205,23 @@ export function exportToPDF(currentRecord: ClassRecord, currentLevel: Level, res
 }
 
 export function generateExportData(currentRecord: ClassRecord, currentLevel: Level, resultMode: 'full' | 'midterm' | 'final', students?: Student[], detailMode: 'subjects' | 'categories' | 'both' = 'subjects') {
-
-
   const activeStudents = (students?.length ? students : (currentRecord.students || [])).filter(s => !s.isHidden);
+
+  const getCategoryActiveWeight = (cat: any, subject: any, mode: 'midterm' | 'final' | 'full') => {
+    if (mode === 'midterm') {
+      return isMidtermCategory(cat) ? (cat.weight ?? 0) : 0;
+    }
+    if (mode === 'final') {
+      return isFinalCategory(cat) ? (cat.weight ?? 0) : 0;
+    }
+    if (isMidtermCategory(cat)) {
+      return subject?.fullModeMidtermWeight ?? cat.weight ?? 0;
+    }
+    if (isFinalCategory(cat)) {
+      return subject?.fullModeFinalWeight ?? cat.weight ?? 0;
+    }
+    return cat.weight ?? 0;
+  };
 
   // Pre-calculate final scores and ranks
   const scores = activeStudents.map(student => {
@@ -191,20 +231,23 @@ export function generateExportData(currentRecord: ClassRecord, currentLevel: Lev
     let totalWeightSum = 0;
 
     currentLevel.subjects.forEach(subject => {
-      const calculateModePct = (mode: 'midterm' | 'final' | 'full') => {
+      const calculateModeMetrics = (mode: 'midterm' | 'final' | 'full') => {
         let points = 0;
         let weight = 0;
         let hasAnyScore = false;
 
         subject.categories.forEach(cat => {
-          if (mode === 'midterm' && !isMidtermCategory(cat)) return;
-          if (mode === 'final' && !isFinalCategory(cat)) return;
+          const isMid = isMidtermCategory(cat);
+          const isFin = isFinalCategory(cat);
+          const activeWeight = getCategoryActiveWeight(cat, subject, mode);
+          const isVisible = mode === 'full' ? true : mode === 'midterm' ? isMid : isFin;
+          if (!isVisible) return;
 
           let catEarned = 0;
           let catMax = 0;
           let hasCatScore = false;
           for (let i = 0; i < cat.itemCount; i++) {
-            const s = student.scores[`${cat.id}_${i}`];
+            const s = getStudentScoreValue(student.scores, cat.id, i, mode, cat);
             if (typeof s === 'number') {
               catEarned += s;
               catMax += (cat.itemMaxScores?.[i] || 100);
@@ -217,84 +260,68 @@ export function generateExportData(currentRecord: ClassRecord, currentLevel: Lev
             }
           }
           const catPct = catMax > 0 ? (catEarned / catMax) * 100 : 0;
-          
-          const activeWeight = cat.weight ?? 0;
-
           if (hasCatScore && activeWeight > 0) {
             points += (catPct / 100) * activeWeight;
             weight += activeWeight;
           }
         });
-        
-        if (!hasAnyScore) return 0;
-        return weight > 0 ? (points / weight) * 100 : 0;
+        return { points, weight, hasAnyScore };
       };
 
-      let subjectPercentage = 0;
-      let hasSubjectScore = false;
+      const fullMetrics = calculateModeMetrics('full');
+      const midMetrics = calculateModeMetrics('midterm');
+      const finalMetrics = calculateModeMetrics('final');
 
       const midKey = `exam_midterm_${subject.id}_-1`;
       const finalKey = `exam_final_${subject.id}_-1`;
 
-      let midResult = calculateModePct('midterm');
-      let hasMidScore = false;
+      let midResultPct = midMetrics.weight > 0 ? (midMetrics.points / midMetrics.weight) * 100 : 0;
+      let hasMidScore = midMetrics.hasAnyScore;
       const midScore = student.scores[midKey];
       if (typeof midScore === 'number') {
         const midMax = subject.midtermMaxScore || 100;
-        midResult = (midScore / midMax) * 100;
+        midResultPct = (midScore / midMax) * 100;
         hasMidScore = true;
       }
 
-      let finalResult = calculateModePct('final');
-      let hasFinalScore = false;
+      let finalResultPct = finalMetrics.weight > 0 ? (finalMetrics.points / finalMetrics.weight) * 100 : 0;
+      let hasFinalScore = finalMetrics.hasAnyScore;
       const finalScore = student.scores[finalKey];
       if (typeof finalScore === 'number') {
         const finalMax = subject.finalMaxScore || 100;
-        finalResult = (finalScore / finalMax) * 100;
+        finalResultPct = (finalScore / finalMax) * 100;
         hasFinalScore = true;
       }
 
-      let subjectTargetWeight = 100;
-      if (resultMode === 'midterm') {
-        subjectPercentage = midResult;
-        hasSubjectScore = hasMidScore || subject.categories.some(cat => {
-          if (!isMidtermCategory(cat)) return false;
-          for (let i = 0; i < cat.itemCount; i++) {
-            if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
-          }
-          return false;
-        });
-        subjectTargetWeight = subject.midtermTargetWeight ?? subject.targetWeight ?? 100;
-        subjectWtds[subject.name] = (subjectPercentage / 100) * subjectTargetWeight;
-      } else if (resultMode === 'final') {
-        subjectPercentage = finalResult;
-        hasSubjectScore = hasFinalScore || subject.categories.some(cat => {
-          if (!isFinalCategory(cat)) return false;
-          for (let i = 0; i < cat.itemCount; i++) {
-            if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
-          }
-          return false;
-        });
-        subjectTargetWeight = subject.finalTargetWeight ?? subject.targetWeight ?? 100;
-        subjectWtds[subject.name] = (subjectPercentage / 100) * subjectTargetWeight;
-      } else {
-        // COMPREHENSIVE TERMLY RESULT CALCULATION
-        const otherCats = subject.categories.filter(cat => !isMidtermCategory(cat) && !isFinalCategory(cat));
-        const midCats = subject.categories.filter(isMidtermCategory);
-        const finalCats = subject.categories.filter(isFinalCategory);
+      let subjectPercentage = 0;
+      let hasSubjectScore = false;
+      let subjectScoreRaw = 0;
 
-        const midWeightContrib = subject.fullModeMidtermWeight ?? midCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
-        const finalWeightContrib = subject.fullModeFinalWeight ?? finalCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
-        
+      const midCats = subject.categories.filter(isMidtermCategory);
+      const finalCats = subject.categories.filter(isFinalCategory);
+      const midWeightContrib = subject.fullModeMidtermWeight ?? midCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+      const finalWeightContrib = subject.fullModeFinalWeight ?? finalCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+
+      const midPoints = (midResultPct / 100) * (midWeightContrib || 0);
+      const finPoints = (finalResultPct / 100) * (finalWeightContrib || 0);
+
+      if (resultMode === 'midterm') {
+        subjectPercentage = midResultPct;
+        hasSubjectScore = hasMidScore || midMetrics.hasAnyScore;
+        subjectWtds[subject.name] = midMetrics.points; // Raw weighted points sum for midterm (like UI)
+      } else if (resultMode === 'final') {
+        subjectPercentage = finalResultPct;
+        hasSubjectScore = hasFinalScore || finalMetrics.hasAnyScore;
+        subjectWtds[subject.name] = finalMetrics.points; // Raw weighted points sum for final (like UI)
+      } else {
+        const otherCats = subject.categories.filter(cat => !isMidtermCategory(cat) && !isFinalCategory(cat));
         let otherWeightedSum = 0;
-        const otherWeightTotal = otherCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
-        
         otherCats.forEach(cat => {
           let catEarned = 0;
           let catMax = 0;
           let hasCatScore = false;
           for (let i = 0; i < cat.itemCount; i++) {
-            const s = student.scores[`${cat.id}_${i}`];
+            const s = getStudentScoreValue(student.scores, cat.id, i, 'full', cat);
             if (typeof s === 'number') {
               catEarned += s;
               catMax += (cat.itemMaxScores?.[i] || 100);
@@ -311,56 +338,47 @@ export function generateExportData(currentRecord: ClassRecord, currentLevel: Lev
           }
         });
 
-        const totalComponentsWeight = otherWeightTotal + (midWeightContrib || 0) + (finalWeightContrib || 0);
-        const catPoints = otherWeightedSum;
-        const midPoints = (midResult / 100) * (midWeightContrib || 0);
-        const finPoints = (finalResult / 100) * (finalWeightContrib || 0);
-        
-        const subjectScoreRaw = catPoints + midPoints + finPoints;
-        
-        subjectPercentage = totalComponentsWeight > 0 ? (subjectScoreRaw / totalComponentsWeight) * 100 : 0;
-        
+        subjectScoreRaw = otherWeightedSum + midPoints + finPoints;
+        subjectPercentage = subjectScoreRaw;
         hasSubjectScore = hasMidScore || hasFinalScore || subject.categories.some(cat => {
           for (let i = 0; i < cat.itemCount; i++) {
-            if (typeof student.scores[`${cat.id}_${i}`] === 'number') return true;
+            if (typeof getStudentScoreValue(student.scores, cat.id, i, 'full', cat) === 'number') return true;
           }
           return false;
         });
-        
-        subjectTargetWeight = totalComponentsWeight;
         subjectWtds[subject.name] = subjectScoreRaw;
       }
 
       subjectAvgs[subject.name] = subjectPercentage;
-      
-      const divideByAll = currentRecord.settings?.divideByAllSubjects !== false;
 
+      const divideByAll = currentRecord.settings?.divideByAllSubjects !== false;
       if (divideByAll || hasSubjectScore) {
-        totalWeightSum += subjectTargetWeight;
+        totalWeightSum += 100;
       }
       if (hasSubjectScore) {
         totalWeightedSum += subjectWtds[subject.name];
       }
     });
 
-    const effectiveDivisor = resultMode === 'midterm'
-      ? (currentLevel?.midtermCustomDivisor ? currentLevel.midtermCustomDivisor * 100 : totalWeightSum)
-      : resultMode === 'final'
-        ? (currentLevel?.finalCustomDivisor ? currentLevel.finalCustomDivisor * 100 : totalWeightSum)
-        : (currentLevel?.customDivisor ? currentLevel.customDivisor * 100 : totalWeightSum);
+    const attWeight = currentLevel.attendanceWeight || 0;
+    if (resultMode === 'full' && attWeight > 0) {
+      const attPct = calculateAttendancePercentage(student, currentRecord.settings || ({} as any));
+      totalWeightedSum += (attPct / 100) * attWeight;
+    }
 
-    const performancePct = effectiveDivisor > 0 ? (totalWeightedSum / effectiveDivisor) * 100 : 0;
+    const performancePct = totalWeightedSum; // TOTAL Weighted Points directly (exactly matching UI!)
+
     return { id: student.id, finalScore: performancePct, subjectAvgs, subjectWtds };
   });
 
   const sortedScores = [...scores].sort((a, b) => b.finalScore - a.finalScore);
-  
+
   return activeStudents.map((student, index) => {
     const metrics = scores.find(s => s.id === student.id)!;
     const finalScore = metrics.finalScore;
-    
+
     const computedAttendance = currentRecord.settings?.showAttendance !== false
-      ? `${calculateAttendancePercentage(student, currentRecord.settings || ({} as any)).toFixed(2)}%` 
+      ? `${calculateAttendancePercentage(student, currentRecord.settings || ({} as any)).toFixed(2)}%`
       : student.attendance;
 
     const status = calculateStatus(finalScore, resultMode, currentRecord.settings, computedAttendance, currentLevel);
@@ -398,14 +416,16 @@ export function generateExportData(currentRecord: ClassRecord, currentLevel: Lev
       // Add Category columns if requested
       if (detailMode === 'categories' || detailMode === 'both') {
         subject.categories.forEach(cat => {
-          if (resultMode === 'midterm' && (cat.midtermWeight === undefined || cat.midtermWeight <= 0)) return;
-          if (resultMode === 'final' && (cat.finalWeight === undefined || cat.finalWeight <= 0)) return;
+          const isMid = isMidtermCategory(cat);
+          const isFin = isFinalCategory(cat);
+          const isVisible = resultMode === 'full' ? true : resultMode === 'midterm' ? isMid : isFin;
+          if (!isVisible) return;
 
           let earned = 0;
           let max = 0;
           let hasAny = false;
           for (let i = 0; i < cat.itemCount; i++) {
-            const s = student.scores[`${cat.id}_${i}`];
+            const s = getStudentScoreValue(student.scores, cat.id, i, resultMode, cat);
             if (typeof s === 'number') {
               earned += s;
               max += (cat.itemMaxScores?.[i] || 100);
@@ -416,13 +436,16 @@ export function generateExportData(currentRecord: ClassRecord, currentLevel: Lev
               hasAny = true;
             }
           }
-          const score = max > 0 ? (earned / max) * 100 : 0;
           
-          const weight = resultMode === 'midterm' 
-            ? (cat.midtermWeight || 0)
+          const weight = resultMode === 'midterm'
+            ? (cat.midtermWeight ?? cat.weight ?? 0)
             : resultMode === 'final'
-              ? (cat.finalWeight || 0)
-              : cat.weight;
+              ? (cat.finalWeight ?? cat.weight ?? 0)
+              : (cat.weight ?? 0);
+
+          // Calculate score based on user's preference:
+          // If weight > 0, score is weighted contribution (e.g., out of 10). If weight is 0, score is out of 100.
+          const score = max > 0 ? (earned / max) * (weight > 0 ? weight : 100) : 0;
 
           let label = detailMode === 'both' ? `${subject.name}: ${cat.name}` : cat.name;
           if (weight > 0) {

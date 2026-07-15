@@ -75,13 +75,28 @@ function addPage(doc: jsPDF, currentRecord: ClassRecord, currentLevel: Level, re
   
   doc.setFontSize(8);
   doc.setTextColor(30, 41, 59);
-  doc.text("Abbreviations:", 14, footerY);
-  doc.text("Alphabet Dict.: Alphabet Dictation", 14, footerY + 4);
-  doc.text("Alphabet Recogn.: Alphabet Recognition", 14, footerY + 8);
-  doc.text("Alphabet Writ.: Alphabet Writing", 14, footerY + 12);
-  doc.text("Alphabet and W. Trac.: Alphabet and Word Tracing", 14, footerY + 16);
-  doc.text("Individual Speak.: Individual Speaking", 14, footerY + 20);
-  doc.text("Pair Conver.: Pair Conversation", 14, footerY + 24);
+
+  const allNames = currentLevel.subjects.flatMap(s => [s.name, ...s.categories.map(c => c.name)]).join(' ');
+  const abbreviationDefinitions = [
+    { key: "Alphabet Dict.", text: "Alphabet Dict.: Alphabet Dictation" },
+    { key: "Alphabet Recogn.", text: "Alphabet Recogn.: Alphabet Recognition" },
+    { key: "Alphabet Writ.", text: "Alphabet Writ.: Alphabet Writing" },
+    { key: "Alphabet and W. Trac.", text: "Alphabet and W. Trac.: Alphabet and Word Tracing" },
+    { key: "Individual Speak.", text: "Individual Speak.: Individual Speaking" },
+    { key: "Pair Conver.", text: "Pair Conver.: Pair Conversation" }
+  ];
+  const activeAbbreviations = abbreviationDefinitions.filter(abb => 
+    allNames.includes(abb.key)
+  );
+
+  let nextY = footerY;
+  if (activeAbbreviations.length > 0) {
+    doc.text("Abbreviations:", 14, nextY);
+    activeAbbreviations.forEach(abb => {
+      nextY += 4;
+      doc.text(abb.text, 14, nextY);
+    });
+  }
 
   const rightX = 220; 
   const today = new Date();

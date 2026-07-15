@@ -37,6 +37,8 @@ export interface GradingScale {
 export interface Level {
   id: string;
   name: string;
+  program?: string;
+  isArchived?: boolean;
   subjects: Subject[];
   gradingScale: GradingScale[];
   midtermGradingScale?: GradingScale[];

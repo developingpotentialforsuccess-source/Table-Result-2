@@ -55,7 +55,7 @@ import { exportToExcelFull } from "./lib/excelExport";
 import { exportToPDFFull } from "./lib/pdfExport";
 import { SYSTEM_TEMPLATES } from "./lib/templates";
 import { auth, googleProvider, db, isFirebaseConfigured } from "./lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc } from "firebase/firestore";
 import {
   signInWithPopup,
   signOut,
@@ -326,11 +326,13 @@ const DEFAULT_LEVELS: Level[] = [
   { id: "l10", name: "Level 4B", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
   { id: "l11", name: "Level 5A", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
   { id: "l12", name: "Level 5B", subjects: [], gradingScale: DEFAULT_GRADING_SCALE },
+  { id: "foundation_a", name: "Level Foundation A", subjects: [], gradingScale: DEFAULT_GRADING_SCALE, program: "English Program" },
 ];
 
 const LEVEL_ORDER = [
   "level 1a",
   "level 1b",
+  "level foundation a",
   "level pre 2ai",
   "level pre 2aii",
   "level 2a",
@@ -702,6 +704,66 @@ export default function App() {
     } catch (e) {
       console.error("Error fetching templates in App.tsx:", e);
       setSavedTemplates(SYSTEM_TEMPLATES);
+    }
+  };
+
+  const handlePublishTemplate = async () => {
+    if (!currentRecord) return;
+    
+    if (!isFirebaseConfigured()) {
+      alert("Firebase is not configured yet. Please use the AI Studio tool to set up Firebase for this app to enable template publishing to the cloud library.");
+      return;
+    }
+
+    if (!user) {
+      alert("Please login first to publish templates to the library.");
+      handleLogin();
+      return;
+    }
+
+    const templateName = prompt("Enter a name for this template (e.g., Program English):", currentRecord.className);
+    if (!templateName) return;
+
+    try {
+      const level = levels.find(l => l.id === currentRecord.levelId);
+      if (!level) {
+        alert("Could not find the level profile to save.");
+        return;
+      }
+      
+      const newTemplate = {
+        name: templateName,
+        authorName: currentRecord.teacherName || user.displayName || "Admin",
+        authorEmail: user.email,
+        levels: [level],
+        createdAt: new Date().toISOString()
+      };
+      
+      await addDoc(collection(db, "templates"), newTemplate);
+      alert("Template successfully published to the library!");
+      fetchTemplates();
+    } catch (e) {
+      console.error("Error publishing template:", e);
+      alert("Failed to publish template. Error: " + (e instanceof Error ? e.message : String(e)));
+    }
+  };
+
+  const handleShareClass = () => {
+    if (!currentRecord) return;
+    // Get the current URL but strip any params
+    const baseUrl = window.location.origin + window.location.pathname;
+    const lockCode = currentRecord.accessCode || "None";
+    const shareText = `Check out this class: ${currentRecord.className}\nURL: ${baseUrl}\nLock Code: ${lockCode}`;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareText).then(() => {
+        alert("Share information copied to clipboard!\n\n" + shareText);
+      }).catch(err => {
+        console.error("Clipboard error:", err);
+        alert("Here is the share information:\n\n" + shareText);
+      });
+    } else {
+      alert("Here is the share information (Clipboard access denied):\n\n" + shareText);
     }
   };
 
@@ -2092,6 +2154,26 @@ export default function App() {
               </datalist>
             </div>
           </div>
+          {["DPS", "DPSS", "BPS", "BPSS"].includes((accessCode || "").toUpperCase().trim()) && (
+            <div className="flex flex-col min-w-[140px] sm:min-w-[180px] justify-center gap-1.5 mt-2 sm:mt-0">
+               <button 
+                  onClick={handlePublishTemplate}
+                  className="bg-purple-50 hover:bg-purple-100 text-purple-700 text-[11px] font-bold py-1 px-2 rounded flex items-center justify-center gap-1 transition-colors border border-purple-200"
+                  title="Share this level's structure as a template"
+               >
+                  <FolderOpen className="w-3 h-3" />
+                  Share as Template
+               </button>
+               <button 
+                  onClick={handleShareClass}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold py-1 px-2 rounded flex items-center justify-center gap-1 transition-colors border border-blue-200"
+                  title="Share this class link and lock code"
+               >
+                  <Copy className="w-3 h-3" />
+                  Share this class
+               </button>
+            </div>
+          )}
           <div className="flex-1 min-w-[140px] sm:min-w-[200px]">
             <label className="block text-xs font-medium text-slate-500 mb-1">
               Class Lock Code
@@ -2121,15 +2203,42 @@ export default function App() {
                 }
                 className="w-full text-base font-semibold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent px-1 py-0.5 transition-colors cursor-pointer"
               >
-                {levels.filter(lvl => 
-                  lvl.id === currentRecord.levelId || 
-                  lvl.subjects.length > 0 || 
-                  classRecords.filter(c => !c.isDeleted).map(c => c.levelId).includes(lvl.id)
-                ).map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
+                {(() => {
+                  const availableLevels = levels.filter(lvl => 
+                    lvl.id === currentRecord.levelId || 
+                    (!lvl.isArchived && (lvl.subjects.length > 0 || classRecords.some(c => !c.isDeleted && c.levelId === lvl.id)))
+                  );
+                  
+                  const archivedLevels = levels.filter(lvl => 
+                    lvl.isArchived && lvl.id !== currentRecord.levelId
+                  );
+
+                  const grouped = availableLevels.reduce((acc, lvl) => {
+                    const prog = lvl.program || "Other Levels";
+                    if (!acc[prog]) acc[prog] = [];
+                    acc[prog].push(lvl);
+                    return acc;
+                  }, {} as Record<string, Level[]>);
+
+                  return (
+                    <>
+                      {Object.entries(grouped).map(([program, lvls]) => (
+                        <optgroup key={program} label={program as string}>
+                          {(lvls as Level[]).map(l => (
+                            <option key={l.id} value={l.id}>{l.name}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      {archivedLevels.length > 0 && (
+                        <optgroup label="Archived / Previous Years">
+                          {archivedLevels.map(l => (
+                            <option key={l.id} value={l.id}>{l.name} (Archived)</option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </>
+                  );
+                })()}
               </select>
               <button
                 onClick={handleRenameLevel}
@@ -2260,15 +2369,42 @@ export default function App() {
                       onChange={(e) => setTemplateLevelId(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
                     >
-                      {levels.filter(lvl => 
-                        lvl.id === templateLevelId ||
-                        lvl.subjects.length > 0 || 
-                        classRecords.filter(c => !c.isDeleted).map(c => c.levelId).includes(lvl.id)
-                      ).map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.name}
-                        </option>
-                      ))}
+                      {(() => {
+                        const availableLevels = levels.filter(lvl => 
+                          lvl.id === templateLevelId || 
+                          (!lvl.isArchived && (lvl.subjects.length > 0 || classRecords.some(c => !c.isDeleted && c.levelId === lvl.id)))
+                        );
+                        
+                        const archivedLevels = levels.filter(lvl => 
+                          lvl.isArchived && lvl.id !== templateLevelId
+                        );
+
+                        const grouped = availableLevels.reduce((acc, lvl) => {
+                          const prog = lvl.program || "Other Levels";
+                          if (!acc[prog]) acc[prog] = [];
+                          acc[prog].push(lvl);
+                          return acc;
+                        }, {} as Record<string, Level[]>);
+
+                        return (
+                          <>
+                            {Object.entries(grouped).map(([program, lvls]) => (
+                              <optgroup key={program} label={program as string}>
+                                {(lvls as Level[]).map(l => (
+                                  <option key={l.id} value={l.id}>{l.name}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                            {archivedLevels.length > 0 && (
+                              <optgroup label="Archived / Previous Years">
+                                {archivedLevels.map(l => (
+                                  <option key={l.id} value={l.id}>{l.name} (Archived)</option>
+                                ))}
+                              </optgroup>
+                            )}
+                          </>
+                        );
+                      })()}
                     </select>
                   </div>
                   <div>
@@ -2674,15 +2810,42 @@ export default function App() {
                       className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 rounded-xl outline-none font-bold text-slate-700 transition-all cursor-pointer"
                     >
                       <option value="empty_no_subjects">Empty Level Profile (No Table, No Columns)</option>
-                      {levels.filter(lvl => 
-                        lvl.id === newLevelId ||
-                        lvl.subjects.length > 0 || 
-                        classRecords.filter(c => !c.isDeleted).map(c => c.levelId).includes(lvl.id)
-                      ).map((lvl) => (
-                        <option key={lvl.id} value={lvl.id}>
-                          {lvl.name} (Copy subjects & grading scale)
-                        </option>
-                      ))}
+                      {(() => {
+                        const availableLevels = levels.filter(lvl => 
+                          lvl.id === newLevelId || 
+                          (!lvl.isArchived && (lvl.subjects.length > 0 || classRecords.some(c => !c.isDeleted && c.levelId === lvl.id)))
+                        );
+                        
+                        const archivedLevels = levels.filter(lvl => 
+                          lvl.isArchived && lvl.id !== newLevelId
+                        );
+
+                        const grouped = availableLevels.reduce((acc, lvl) => {
+                          const prog = lvl.program || "Other Levels";
+                          if (!acc[prog]) acc[prog] = [];
+                          acc[prog].push(lvl);
+                          return acc;
+                        }, {} as Record<string, Level[]>);
+
+                        return (
+                          <>
+                            {Object.entries(grouped).map(([program, lvls]) => (
+                              <optgroup key={program} label={program as string}>
+                                {(lvls as Level[]).map(l => (
+                                  <option key={l.id} value={l.id}>{l.name}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                            {archivedLevels.length > 0 && (
+                              <optgroup label="Archived / Previous Years">
+                                {archivedLevels.map(l => (
+                                  <option key={l.id} value={l.id}>{l.name} (Archived)</option>
+                                ))}
+                              </optgroup>
+                            )}
+                          </>
+                        );
+                      })()}
                     </select>
                   </div>
                 )}
@@ -2815,24 +2978,43 @@ export default function App() {
           className={`shadow-sm border overflow-hidden flex flex-col ${isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen" : "rounded-xl flex-1 min-h-[400px]"} ${currentPaper.bgClass} ${currentPaper.borderClass} ${currentPaper.textClass}`}
           style={currentPaper.customStyle}
         >
-          <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between bg-black/[0.02] shrink-0 gap-4">
-            <div className="flex items-center gap-6">
+          <div className="p-3 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between bg-black/[0.02] shrink-0 gap-3 sm:gap-4">
+            <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar pb-2 -mb-2 min-w-0">
               <button 
                 onClick={() => setActiveView('grades')}
-                className={`text-lg font-medium flex items-center gap-2 pb-1 transition-colors ${activeView === 'grades' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`text-base sm:text-lg font-bold flex items-center gap-2 pb-1 transition-colors whitespace-nowrap ${activeView === 'grades' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                <Users className="w-5 h-5" />
-                Student Roster & Grades
+                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                Student Rosters
               </button>
               {(currentRecord?.settings?.showAttendance !== false) && (
                 <button 
                   onClick={() => setActiveView('attendance')}
-                  className={`text-lg font-medium flex items-center gap-2 pb-1 transition-colors ${activeView === 'attendance' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`text-base sm:text-lg font-bold flex items-center gap-2 pb-1 transition-colors whitespace-nowrap ${activeView === 'attendance' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
                 >
-                  <Calendar className="w-5 h-5" />
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                   Attendance
                 </button>
               )}
+
+              {/* Mobile Quick Mode Toggle - Swipable */}
+              <div className="flex sm:hidden items-center gap-1.5 shrink-0">
+                 <div className={`flex items-center border rounded-lg px-2 shadow-sm transition-all ${
+                    resultMode === 'full' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                    resultMode === 'midterm' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                    'bg-rose-50 border-rose-200 text-rose-800'
+                  }`}>
+                    <select
+                      value={resultMode}
+                      onChange={(e) => handleUpdateResultMode(e.target.value as "full" | "midterm" | "final")}
+                      className="bg-transparent text-[10px] font-black outline-none cursor-pointer py-1.5 uppercase tracking-tighter"
+                    >
+                      <option value="full">Termly</option>
+                      <option value="midterm">Midterm</option>
+                      <option value="final">Final</option>
+                    </select>
+                 </div>
+              </div>
 
               {/* Compact View Toggle */}
               <button
@@ -2840,7 +3022,7 @@ export default function App() {
                   ...currentRecord!.settings!,
                   showScoreColumns: !currentRecord!.settings!.showScoreColumns
                 })}
-                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm ${
+                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm shrink-0 ${
                   currentRecord?.settings?.showScoreColumns 
                     ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-50" 
                     : "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
@@ -2861,50 +3043,101 @@ export default function App() {
               </button>
 
               {/* View Settings Menu */}
-              <div className="relative group/view-settings hidden md:block">
+              <div className="relative group/view-settings shrink-0">
                 <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 bg-white hover:bg-slate-50 transition-all shadow-sm">
                   <SlidersHorizontal className="w-3.5 h-3.5" />
-                  Settings
+                  <span className="hidden sm:inline">View Settings</span>
+                  <span className="sm:hidden text-[10px] uppercase">View</span>
                   <ChevronDown className="w-3 h-3 opacity-50 ml-1" />
                 </button>
                 <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl opacity-0 invisible group-hover/view-settings:opacity-100 group-hover/view-settings:visible transition-all z-50">
-                  <div className="p-3 flex flex-col gap-3">
-                    <label className="flex items-center justify-between gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                      <span>Show Item Config (MAX, etc.)</span>
-                      <input 
-                        type="checkbox" 
-                        checked={currentRecord?.settings?.showItemConfig !== false}
-                        onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, showItemConfig: e.target.checked})}
-                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                      />
-                    </label>
-                    <label className="flex items-center justify-between gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                      <span>Hide Regular Categories</span>
-                      <input 
-                        type="checkbox" 
-                        checked={currentRecord?.settings?.hideRegularCategories === true}
-                        onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, hideRegularCategories: e.target.checked})}
-                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                      />
-                    </label>
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-xs font-bold text-slate-500 uppercase">Result Column Display</span>
+                  <div className="p-4 flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Visibility</span>
+                      <label className="flex items-center justify-between gap-2 text-sm font-medium text-slate-700 cursor-pointer hover:text-blue-600 transition-colors">
+                        <span>Show Item Config (MAX, etc.)</span>
+                        <input 
+                          type="checkbox" 
+                          checked={currentRecord?.settings?.showItemConfig !== false}
+                          onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, showItemConfig: e.target.checked})}
+                          className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between gap-2 text-sm font-medium text-slate-700 cursor-pointer hover:text-blue-600 transition-colors">
+                        <span>Hide Regular Categories</span>
+                        <input 
+                          type="checkbox" 
+                          checked={currentRecord?.settings?.hideRegularCategories === true}
+                          onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, hideRegularCategories: e.target.checked})}
+                          className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="md:hidden flex flex-col gap-2 pt-3 border-t border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Table Layout</span>
+                      <button
+                        onClick={() => handleUpdateSettings({
+                          ...currentRecord!.settings!,
+                          showScoreColumns: !currentRecord!.settings!.showScoreColumns
+                        })}
+                        className={`flex items-center justify-between w-full p-2 rounded-lg border text-xs font-bold transition-all ${
+                          currentRecord?.settings?.showScoreColumns 
+                            ? "bg-white border-slate-200 text-slate-600" 
+                            : "bg-blue-50 border-blue-200 text-blue-700"
+                        }`}
+                      >
+                        <span>{currentRecord?.settings?.showScoreColumns ? "Detailed View" : "Compact View"}</span>
+                        {currentRecord?.settings?.showScoreColumns ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+
+                    <div className="lg:hidden flex flex-col gap-2 pt-3 border-t border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Result Column</span>
                       <select 
                         value={currentRecord?.settings?.resultDisplayMode || 'both'}
                         onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, resultDisplayMode: e.target.value as 'both'|'avg'|'wtd'})}
-                        className="w-full text-sm font-medium border border-slate-200 rounded p-1.5 outline-none focus:border-blue-500 bg-white"
+                        className="w-full text-xs font-bold border border-slate-200 rounded p-2 outline-none focus:border-blue-500 bg-slate-50"
                       >
-                        <option value="both">Both (Weight & Average)</option>
+                        <option value="both">Both (Wtd & Avg)</option>
                         <option value="wtd">Weight Only</option>
                         <option value="avg">Average Only</option>
+                      </select>
+                    </div>
+
+                    <div className="sm:hidden flex flex-col gap-2 pt-3 border-t border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Grading Mode</span>
+                      <select
+                        value={resultMode}
+                        onChange={(e) => handleUpdateResultMode(e.target.value as "full" | "midterm" | "final")}
+                        className="w-full text-xs font-bold border border-slate-200 rounded p-2 outline-none focus:border-blue-500 bg-slate-50"
+                      >
+                        <option value="full">Termly Result</option>
+                        <option value="midterm">Mid-term Test</option>
+                        <option value="final">Final Test</option>
                       </select>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Repositioned Mode Select */}
-              <div className={`hidden sm:flex items-center border rounded-lg px-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all ml-2 ${
+              {/* Result Column Display - Desktop */}
+              <div className="hidden lg:flex items-center border border-slate-200 rounded-lg px-2 bg-white shadow-sm ml-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mr-2 border-r border-slate-100 pr-2 py-1">Result Col</span>
+                <select 
+                  value={currentRecord?.settings?.resultDisplayMode || 'both'}
+                  onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, resultDisplayMode: e.target.value as 'both'|'avg'|'wtd'})}
+                  className="bg-transparent text-xs font-bold text-slate-600 outline-none cursor-pointer py-1"
+                  title="Result Column Display"
+                >
+                  <option value="both">Both (Wtd & Avg)</option>
+                  <option value="wtd">Weight Only</option>
+                  <option value="avg">Average Only</option>
+                </select>
+              </div>
+
+              {/* Repositioned Mode Select - Desktop */}
+              <div className={`hidden sm:flex items-center border rounded-lg px-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all ml-2 shrink-0 ${
                 resultMode === 'full' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
                 resultMode === 'midterm' ? 'bg-amber-50 border-amber-200 text-amber-800' :
                 'bg-rose-50 border-rose-200 text-rose-800'
@@ -2927,14 +3160,14 @@ export default function App() {
               </div>
 
               {/* Repositioned Search Input */}
-              <div className="hidden lg:flex items-center bg-white/50 border border-slate-200 rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all ml-4">
-                <Search className="w-4 h-4 text-slate-400" />
+              <div className="flex items-center bg-white/50 border border-slate-200 rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all shrink-0 min-w-[180px] sm:min-w-[240px] ml-0 sm:ml-4">
+                <Search className="w-4 h-4 text-slate-400 shrink-0" />
                 <input 
                   type="text" 
                   placeholder="Search student..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="px-2 text-sm outline-none bg-transparent w-48 sm:w-64 font-medium text-slate-700"
+                  className="px-2 text-sm outline-none bg-transparent w-full font-bold text-slate-700"
                 />
                 {searchQuery && (
                   <button onClick={() => setSearchQuery("")} className="text-slate-400 hover:text-slate-600">
@@ -2944,17 +3177,6 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {/* Mobile Search Input */}
-              <div className="flex lg:hidden items-center bg-white/50 border border-slate-200 rounded-full px-2 py-1 shadow-sm sm:w-auto w-32">
-                <Search className="w-3.5 h-3.5 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="px-1.5 text-xs outline-none bg-transparent w-full font-medium"
-                />
-              </div>
               {totalWeight !== 100 && totalWeight > 0 && (
                 <span className="text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 hidden md:inline-block">
                   Warning: Level total weight is {totalWeight}%

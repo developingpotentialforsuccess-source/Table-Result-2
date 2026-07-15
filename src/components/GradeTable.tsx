@@ -1588,94 +1588,90 @@ export default function GradeTable({
                   const isFinCat = isFinalCategory(cc.category);
                   const modeBg = isMidCat ? 'bg-orange-50 text-orange-900 border-b-orange-200' : isFinCat ? 'bg-teal-50 text-teal-900 border-b-teal-200' : '';
 
-                  return (
-                    <th
-                      key={`${cc.category.id}_${i}`}
-                      colSpan={cc.colSpan}
-                      className={`px-2 py-2 border-r border-b ${gridStyles.headerBorderClass} ${headerStyleClass} ${
-                        isCollapsed 
-                          ? "bg-slate-100/50 text-slate-300 italic w-12" 
-                          : hasKeptCols
-                            ? `${theme.bg} opacity-90 border-b-2 border-dashed border-b-slate-400 text-slate-700`
-                            : modeBg || `${theme.bg} ${theme.text}`
-                      } whitespace-nowrap transition-colors`}
-                    >
-                      <div className="flex items-center justify-center gap-1.5">
-                        {isCollapsed ? (
-                          <button
-                            onClick={() => toggleCategory(cc.category.id)}
-                            className="flex flex-col items-center justify-center gap-0.5 w-full h-full group hover:bg-black/5 p-1 rounded transition-colors"
-                            title={`Show ${cc.category.name}`}
-                          >
-                            <Eye className="w-3 h-3 text-slate-400 group-hover:text-blue-500" />
-                            <span className="text-[8px] uppercase tracking-tighter text-slate-400 group-hover:text-blue-500">{cc.category.name.substring(0, 3)}</span>
-                          </button>
-                        ) : (
-                          <>
-                            {(() => {
-                              const subCol = subjectCols.find(sc => sc.subject.id === cc.subjectId);
-                              const isSingleCol = subCol ? subCol.colSpan === 1 : false;
-                              if (resultMode !== 'full' && isSingleCol) return null;
+                    const activeWeight = (() => {
+                      if (cc.category.name === "RESULT" || isCollapsed) return null;
+                      const subject = level.subjects.find(s => s.id === cc.subjectId);
+                      return getCategoryActiveWeight(cc.category, subject, resultMode);
+                    })();
 
-                              return (
-                                <>
-                                  <span className={`truncate max-w-[150px] ${hasKeptCols ? "text-slate-600 font-medium italic" : ""}`}>
-                                    {(() => {
-                                      if (resultMode === 'full') {
-                                        const subject = level.subjects.find(s => s.id === cc.subjectId);
-                                        const midCats = subject?.categories.filter(isMidtermCategory) || [];
-                                        const finalCats = subject?.categories.filter(isFinalCategory) || [];
-                                        if (isMidtermCategory(cc.category) && midCats.length === 1 && typeof subject?.fullModeMidtermWeight === 'number') {
-                                          return "Midterm";
-                                        }
-                                        if (isFinalCategory(cc.category) && finalCats.length === 1 && typeof subject?.fullModeFinalWeight === 'number') {
-                                          return "Final";
-                                        }
-                                      }
-                                      return cc.category.name;
-                                    })()}
-                                    {(() => {
-                                      if (settings?.showCategoryWeight === false || cc.category.name === "RESULT") return "";
-                                      const subject = level.subjects.find(s => s.id === cc.subjectId);
-                                      const activeWeight = getCategoryActiveWeight(cc.category, subject, resultMode);
-                                      
-                                      const isExam = cc.category.id.startsWith('exam_') || isMidtermCategory(cc.category) || isFinalCategory(cc.category);
-                                      if (resultMode === 'full' && !isExam) {
-                                        return ""; // Do not show weight for regular categories in termly result
-                                      }
-                                      
-                                      return ` (${activeWeight}%)`;
-                                    })()}
-                                  </span>
-                                  {settings?.showCategoryHideIcon !== false && (
-                                    <button
-                                      onClick={() => toggleCategory(cc.category.id)}
-                                      className="p-1 hover:bg-black/10 rounded transition-colors ml-1"
-                                      title={hasKeptCols ? `Show raw scores for ${cc.category.name}` : `Hide ${cc.category.name}`}
-                                    >
-                                      {hasKeptCols ? (
-                                        <Eye className="w-3.5 h-3.5 text-blue-600" />
-                                      ) : (
-                                        <EyeOff className="w-3.5 h-3.5" />
+                    const thTitle = activeWeight !== null ? `${activeWeight}%` : "";
+
+                    return (
+                      <th
+                        key={`${cc.category.id}_${i}`}
+                        colSpan={cc.colSpan}
+                        title={thTitle}
+                        className={`px-2 py-2 border-r border-b ${gridStyles.headerBorderClass} ${headerStyleClass} ${
+                          isCollapsed 
+                            ? "bg-slate-100/50 text-slate-300 italic w-12" 
+                            : hasKeptCols
+                              ? `${theme.bg} opacity-90 border-b-2 border-dashed border-b-slate-400 text-slate-700`
+                              : modeBg || `${theme.bg} ${theme.text}`
+                        } whitespace-nowrap transition-colors`}
+                      >
+                        <div className="flex flex-col items-center justify-center gap-0.5">
+                          {isCollapsed ? (
+                            <button
+                              onClick={() => toggleCategory(cc.category.id)}
+                              className="flex flex-col items-center justify-center gap-0.5 w-full h-full group hover:bg-black/5 p-1 rounded transition-colors"
+                              title={`Show ${cc.category.name}`}
+                            >
+                              <Eye className="w-3 h-3 text-slate-400 group-hover:text-blue-500" />
+                              <span className="text-[8px] uppercase tracking-tighter text-slate-400 group-hover:text-blue-500">{cc.category.name.substring(0, 3)}</span>
+                            </button>
+                          ) : (
+                            <>
+                              <div className="flex items-center justify-center gap-1.5">
+                                {(() => {
+                                  const subCol = subjectCols.find(sc => sc.subject.id === cc.subjectId);
+                                  const isSingleCol = subCol ? subCol.colSpan === 1 : false;
+                                  if (resultMode !== 'full' && isSingleCol) return null;
+
+                                  return (
+                                    <>
+                                      <span className={`truncate max-w-[150px] ${hasKeptCols ? "text-slate-600 font-medium italic" : ""}`}>
+                                        {(() => {
+                                          if (resultMode === 'full') {
+                                            const subject = level.subjects.find(s => s.id === cc.subjectId);
+                                            const midCats = subject?.categories.filter(isMidtermCategory) || [];
+                                            const finalCats = subject?.categories.filter(isFinalCategory) || [];
+                                            if (isMidtermCategory(cc.category) && midCats.length === 1 && typeof subject?.fullModeMidtermWeight === 'number') {
+                                              return "Midterm";
+                                            }
+                                            if (isFinalCategory(cc.category) && finalCats.length === 1 && typeof subject?.fullModeFinalWeight === 'number') {
+                                              return "Final";
+                                            }
+                                          }
+                                          return cc.category.name;
+                                        })()}
+                                      </span>
+                                      {settings?.showCategoryHideIcon !== false && (
+                                        <button
+                                          onClick={() => toggleCategory(cc.category.id)}
+                                          className="p-1 hover:bg-black/10 rounded transition-colors ml-1"
+                                          title={hasKeptCols ? `Show raw scores for ${cc.category.name}` : `Hide ${cc.category.name}`}
+                                        >
+                                          {hasKeptCols ? (
+                                            <Eye className="w-3.5 h-3.5 text-blue-600" />
+                                          ) : (
+                                            <EyeOff className="w-3.5 h-3.5" />
+                                          )}
+                                        </button>
                                       )}
-                                    </button>
-                                  )}
-                                  {(() => {
-                                    const isMidCol = resultMode === 'full' && cc.category.id.startsWith('exam_midterm_cat_');
-                                    const isFinCol = resultMode === 'full' && cc.category.id.startsWith('exam_final_cat_');
-                                    const isMidCat = isMidtermCategory(cc.category);
-                                    const isFinCat = isFinalCategory(cc.category);
-                                    
-                                    return null;
-                                  })()}
-                                </>
-                              );
-                            })()}
-                          </>
-                        )}
-                      </div>
-                    </th>
-                  );
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                              {activeWeight !== null && (
+                                <span className="text-[11px] font-black text-orange-600 bg-orange-50/50 px-1 rounded leading-none mt-0.5" title="Category Weight">
+                                  {activeWeight}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </th>
+                    );
                 })}
               </tr>
           )}
