@@ -3093,10 +3093,10 @@ export default function App() {
           style={currentPaper.customStyle}
         >
           <div className="p-3 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between bg-black/[0.02] shrink-0 gap-3 sm:gap-4">
-            <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar pb-2 -mb-2 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto no-scrollbar pb-2 -mb-2 min-w-0 flex-1">
               <button 
                 onClick={() => setActiveView('grades')}
-                className={`text-base sm:text-lg font-bold flex items-center gap-2 pb-1 transition-colors whitespace-nowrap ${activeView === 'grades' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`text-base sm:text-lg font-bold flex items-center gap-2 pb-1 transition-colors whitespace-nowrap shrink-0 ${activeView === 'grades' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                 Student Rosters
@@ -3104,7 +3104,7 @@ export default function App() {
               {(currentRecord?.settings?.showAttendance !== false) && (
                 <button 
                   onClick={() => setActiveView('attendance')}
-                  className={`text-base sm:text-lg font-bold flex items-center gap-2 pb-1 transition-colors whitespace-nowrap ${activeView === 'attendance' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`text-base sm:text-lg font-bold flex items-center gap-2 pb-1 transition-colors whitespace-nowrap shrink-0 ${activeView === 'attendance' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                   Attendance
@@ -3233,10 +3233,9 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              </div>
 
               {/* Result Column Display - Desktop */}
-              <div className="hidden lg:flex items-center border border-slate-200 rounded-lg px-2 bg-white shadow-sm ml-2">
+              <div className="hidden lg:flex items-center border border-slate-200 rounded-lg px-2 bg-white shadow-sm shrink-0">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mr-2 border-r border-slate-100 pr-2 py-1">Result Col</span>
                 <select 
                   value={currentRecord?.settings?.resultDisplayMode || 'both'}
@@ -3251,7 +3250,7 @@ export default function App() {
               </div>
 
               {/* Repositioned Mode Select - Desktop */}
-              <div className={`hidden sm:flex items-center border rounded-lg px-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all ml-2 shrink-0 ${
+              <div className={`hidden sm:flex items-center border rounded-lg px-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shrink-0 ${
                 resultMode === 'full' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
                 resultMode === 'midterm' ? 'bg-amber-50 border-amber-200 text-amber-800' :
                 'bg-rose-50 border-rose-200 text-rose-800'
@@ -3272,6 +3271,7 @@ export default function App() {
                   <option value="final" className="text-slate-700 bg-white">Final Test</option>
                 </select>
               </div>
+            </div>
 
               {/* Repositioned Search Input */}
               <div className="flex items-center bg-white/50 border border-slate-200 rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all shrink-0 min-w-[180px] sm:min-w-[240px] ml-0 sm:ml-4">

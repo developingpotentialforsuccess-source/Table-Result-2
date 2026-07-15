@@ -351,22 +351,40 @@ export function generateExportData(currentRecord: ClassRecord, currentLevel: Lev
 
       subjectAvgs[subject.name] = subjectPercentage;
 
+      const targetWeight = resultMode === 'midterm' 
+        ? (subject.midtermTargetWeight ?? subject.targetWeight ?? 100)
+        : resultMode === 'final'
+          ? (subject.finalTargetWeight ?? subject.targetWeight ?? 100)
+          : (subject.targetWeight ?? 100);
+
       const divideByAll = currentRecord.settings?.divideByAllSubjects !== false;
       if (divideByAll || hasSubjectScore) {
-        totalWeightSum += 100;
+        totalWeightSum += targetWeight;
       }
       if (hasSubjectScore) {
-        totalWeightedSum += subjectWtds[subject.name];
+        let pct = 0;
+        if (resultMode === 'midterm') {
+          pct = midResultPct;
+        } else if (resultMode === 'final') {
+          pct = finalResultPct;
+        } else {
+          const otherCats = subject.categories.filter(cat => !isMidtermCategory(cat) && !isFinalCategory(cat));
+          const otherWeightTotal = otherCats.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+          const totalComponentsWeight = otherWeightTotal + (midWeightContrib || 0) + (finalWeightContrib || 0);
+          pct = totalComponentsWeight > 0 ? (subjectScoreRaw / totalComponentsWeight) * 100 : 0;
+        }
+        totalWeightedSum += (pct / 100) * targetWeight;
       }
     });
 
     const attWeight = currentLevel.attendanceWeight || 0;
     if (resultMode === 'full' && attWeight > 0) {
       const attPct = calculateAttendancePercentage(student, currentRecord.settings || ({} as any));
+      totalWeightSum += attWeight;
       totalWeightedSum += (attPct / 100) * attWeight;
     }
 
-    const performancePct = totalWeightedSum; // TOTAL Weighted Points directly (exactly matching UI!)
+    const performancePct = totalWeightSum > 0 ? (totalWeightedSum / totalWeightSum) * 100 : 0;
 
     return { id: student.id, finalScore: performancePct, subjectAvgs, subjectWtds };
   });

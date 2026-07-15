@@ -563,7 +563,7 @@ export default function GradeTable({
             if (keepWtd) {
               const activeWeight = getCategoryActiveWeight(category, subject, resultMode);
               
-              const wtdLabel = " ";
+              const wtdLabel = "W (%)";
 
               itemCols.push({
                 categoryId: category.id,
@@ -641,7 +641,7 @@ export default function GradeTable({
             if (effectiveShowWtd) {
               const activeWeight = getCategoryActiveWeight(category, subject, resultMode);
               
-              const wtdLabel = " ";
+              const wtdLabel = "W (%)";
 
               itemCols.push({
                 categoryId: category.id,
@@ -659,7 +659,7 @@ export default function GradeTable({
             }
 
             if (catSpan === 0) {
-              const weightLabel = " ";
+              const weightLabel = "W (%)";
               itemCols.push({
                 categoryId: category.id,
                 subjectId: subject.id,
@@ -1098,11 +1098,17 @@ export default function GradeTable({
               ? (subject.midtermTargetWeight ?? subject.targetWeight ?? 100)
               : resultMode === 'final'
                 ? (subject.finalTargetWeight ?? subject.targetWeight ?? 100)
-                : totalComponentsWeight;
+                : (subject.targetWeight ?? 100);
             totalWeightSum += activeSubWeight;
           }
           if (hasSubjectScore) {
-            totalWeightedSum += subjectScores[subject.id];
+            const subjectPct = subjectScores[`${subject.id}_pct`] || 0;
+            const activeSubWeight = resultMode === 'midterm' 
+              ? (subject.midtermTargetWeight ?? subject.targetWeight ?? 100)
+              : resultMode === 'final'
+                ? (subject.finalTargetWeight ?? subject.targetWeight ?? 100)
+                : (subject.targetWeight ?? 100);
+            totalWeightedSum += (subjectPct / 100) * activeSubWeight;
           }
         }
       });
@@ -1521,7 +1527,7 @@ export default function GradeTable({
               <>
                 <th
                   rowSpan={resultMode === 'full' ? 3 : 2}
-                  className={`px-4 py-3 font-bold border-l ${gridStyles.totalBorderClass} text-center shadow-[-1px_0_0_0_#fdba74] cursor-pointer transition-colors bg-orange-100 text-orange-950 hover:bg-orange-200`}
+                  className={`px-4 py-3 font-bold border-l ${gridStyles.totalBorderClass} text-center shadow-[-1px_0_0_0_#bae6fd] cursor-pointer transition-colors bg-blue-100 text-blue-950 hover:bg-blue-200`}
                   onClick={() => handleSort("finalScore")}
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -2242,9 +2248,9 @@ export default function GradeTable({
                 {level.subjects.length > 0 && (
                   <>
                     {(() => {
-                      const style = getManualStyle('avg', 'text-orange-900', 'bg-orange-50');
+                      const style = getManualStyle('avg', 'text-blue-900', 'bg-blue-50');
                       return (
-                        <td className={`px-2 py-2 ${style.bgClass} font-bold text-center border-l border-b ${gridStyles.totalBorderClass} shadow-[-1px_0_0_0_#fff7ed] text-sm ${style.textClass}`}>
+                        <td className={`px-2 py-2 ${style.bgClass} font-bold text-center border-l border-b ${gridStyles.totalBorderClass} shadow-[-1px_0_0_0_#eff6ff] text-sm ${style.textClass}`}>
                           <div className="flex flex-col items-center">
                             <span title="Overall Percentage Score (Weighted Average)">
                               {metrics.performancePct.toFixed(1)}%
