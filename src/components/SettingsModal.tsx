@@ -520,6 +520,30 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
               </div>
 
               <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-800 mb-2">⚠️ Level Total Weight Warning</h3>
+                <div className="space-y-3 text-sm text-slate-600 leading-relaxed">
+                  <p>
+                    <strong>What does "Level total weight is 25%" mean?</strong>
+                  </p>
+                  <p>
+                    In this system, you define a <strong>Target Weight</strong> for each subject (e.g., Reading: 20%, Writing: 20%, etc.). 
+                    The <strong>Level Total Weight</strong> is the sum of these target weights across ALL subjects in your current level profile.
+                  </p>
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                    <p className="font-bold text-amber-900 mb-1">Standard Goal: 100%</p>
+                    <p className="text-amber-800 text-xs">
+                      Usually, you want your total subjects to add up to 100%. If you only have one subject worth 25% and nothing else, the system warns you because 75% of the student's total grade is "missing".
+                    </p>
+                  </div>
+                  <p>
+                    <strong>What if I put 20 or 25?</strong>
+                    <br />
+                    If you put 25 for Grammar, it means Grammar accounts for 25% of the student's overall grade. If you add 4 more subjects at 25% each, the total will be 100%, and the warning will disappear.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="text-lg font-bold text-slate-800 mb-2">❓ Handling Missed Quizzes & Absences</h3>
                 <p className="text-sm text-slate-600 space-y-3 leading-relaxed">
                   <strong>How does the system calculate averages when a student misses a quiz?</strong>
@@ -838,6 +862,85 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                         <span className="block text-xs text-slate-500">If checked, student average is divided by the total weight of all subjects in the level (unfilled subjects get 0%). If unchecked, average is computed only across subjects with scores.</span>
                       </div>
                     </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors">
+                      <input 
+                        type="checkbox" 
+                        checked={settings.hideWeightSymbol === true}
+                        onChange={(e) => onUpdateSettings({ ...settings, hideWeightSymbol: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <span className="block text-sm font-bold text-slate-900">Compact Weight Labels (e.g. W40)</span>
+                        <span className="block text-xs text-slate-500">Hide the % symbol and parentheses in weight column headers</span>
+                      </div>
+                    </label>
+
+                    <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-bold text-blue-900 uppercase tracking-tight">Conditional Score Colors</label>
+                        <button 
+                          onClick={() => {
+                            const newRules = [...(settings.conditionalFormatting || []), { id: Date.now().toString(), min: 0, max: 49, color: "#dc2626" }];
+                            onUpdateSettings({ ...settings, conditionalFormatting: newRules });
+                          }}
+                          className="text-[10px] font-bold bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                        >
+                          Add Rule
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {(settings.conditionalFormatting || []).map((rule, idx) => (
+                          <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded border border-blue-100">
+                            <span className="text-[10px] font-bold text-slate-400">If % ≥</span>
+                            <input 
+                              type="number" 
+                              value={rule.min} 
+                              onChange={(e) => {
+                                const newRules = [...settings.conditionalFormatting!];
+                                newRules[idx].min = Number(e.target.value);
+                                onUpdateSettings({ ...settings, conditionalFormatting: newRules });
+                              }}
+                              className="w-12 text-xs font-bold border rounded px-1"
+                            />
+                            <span className="text-[10px] font-bold text-slate-400">and ≤</span>
+                            <input 
+                              type="number" 
+                              value={rule.max} 
+                              onChange={(e) => {
+                                const newRules = [...settings.conditionalFormatting!];
+                                newRules[idx].max = Number(e.target.value);
+                                onUpdateSettings({ ...settings, conditionalFormatting: newRules });
+                              }}
+                              className="w-12 text-xs font-bold border rounded px-1"
+                            />
+                            <span className="text-[10px] font-bold text-slate-400">Color:</span>
+                            <input 
+                              type="color" 
+                              value={rule.color} 
+                              onChange={(e) => {
+                                const newRules = [...settings.conditionalFormatting!];
+                                newRules[idx].color = e.target.value;
+                                onUpdateSettings({ ...settings, conditionalFormatting: newRules });
+                              }}
+                              className="w-6 h-6 p-0 border-0 bg-transparent cursor-pointer"
+                            />
+                            <button 
+                              onClick={() => {
+                                const newRules = settings.conditionalFormatting!.filter((_, i) => i !== idx);
+                                onUpdateSettings({ ...settings, conditionalFormatting: newRules });
+                              }}
+                              className="ml-auto text-red-400 hover:text-red-600"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        {(!settings.conditionalFormatting || settings.conditionalFormatting.length === 0) && (
+                          <p className="text-[10px] text-slate-500 italic">No custom rules. Using system defaults (Red &lt; 50%, Blue ≥ 50%, Green ≥ 95%).</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </section>
 
@@ -868,6 +971,26 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                             : 'bg-blue-50/50 text-blue-900 border-blue-200/40'
                         }`}>
                           78.0
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Total Column</span>
+                        <div className={`px-4 py-2 rounded-md border text-sm font-bold shadow-sm transition-all text-center min-w-[5rem] ${
+                          (settings.totalColorMode === 'manual')
+                            ? `${MANUAL_COLORS.find(c => c.id === settings.totalBgColor)?.bgClass || 'bg-transparent'} ${MANUAL_COLORS.find(c => c.id === settings.totalTextColor)?.textClass || 'text-slate-900'} ${MANUAL_COLORS.find(c => c.id === settings.totalBgColor)?.borderClass || 'border-slate-200'}`
+                            : 'bg-blue-50/50 text-blue-900 border-blue-200/40'
+                        }`}>
+                          845
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Rank Column</span>
+                        <div className={`px-4 py-2 rounded-md border text-sm font-bold shadow-sm transition-all text-center min-w-[5rem] ${
+                          (settings.rankColorMode === 'manual')
+                            ? `${MANUAL_COLORS.find(c => c.id === settings.rankBgColor)?.bgClass || 'bg-transparent'} ${MANUAL_COLORS.find(c => c.id === settings.rankTextColor)?.textClass || 'text-slate-900'} ${MANUAL_COLORS.find(c => c.id === settings.rankBgColor)?.borderClass || 'border-slate-200'}`
+                            : 'bg-blue-50/50 text-blue-900 border-blue-200/40'
+                        }`}>
+                          1st
                         </div>
                       </div>
                     </div>
@@ -1022,6 +1145,168 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                                   onClick={() => onUpdateSettings({ ...settings, resultBgColor: color.id })}
                                   className={`p-1.5 rounded-lg border text-center transition-all text-xs font-bold flex flex-col items-center gap-1 cursor-pointer ${
                                     (settings.resultBgColor || 'white') === color.id
+                                      ? 'border-blue-500 ring-2 ring-blue-100 bg-white'
+                                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <div className={`w-4 h-4 rounded ${color.bgClass} border ${color.borderClass}`} />
+                                  <span className="text-[9px] text-slate-700 font-medium">{color.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Total Selector */}
+                    <div className="bg-slate-50/30 p-4 rounded-xl border border-slate-200/60">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-800">Total Score Style</h4>
+                          <p className="text-[11px] text-slate-500">Applies to grand total score numbers.</p>
+                        </div>
+                        <div className="flex bg-slate-200 p-0.5 rounded-lg text-xs font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => onUpdateSettings({ ...settings, totalColorMode: 'auto' })}
+                            className={`px-3 py-1 rounded-md transition-all cursor-pointer ${(!settings.totalColorMode || settings.totalColorMode === 'auto') ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                          >
+                            Auto Theme
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onUpdateSettings({ 
+                              ...settings, 
+                              totalColorMode: 'manual',
+                              totalTextColor: settings.totalTextColor || 'black',
+                              totalBgColor: settings.totalBgColor || 'white'
+                            })}
+                            className={`px-3 py-1 rounded-md transition-all cursor-pointer ${(settings.totalColorMode === 'manual') ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                          >
+                            Manual
+                          </button>
+                        </div>
+                      </div>
+
+                      {settings.totalColorMode === 'manual' && (
+                        <div className="space-y-4">
+                          {/* Text Color */}
+                          <div>
+                            <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Text Color (Select 1 of 12)</span>
+                            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                              {MANUAL_COLORS.map((color) => (
+                                <button
+                                  key={`total-text-${color.id}`}
+                                  type="button"
+                                  onClick={() => onUpdateSettings({ ...settings, totalTextColor: color.id })}
+                                  className={`p-1.5 rounded-lg border text-center transition-all text-xs font-bold flex flex-col items-center gap-1 cursor-pointer ${
+                                    (settings.totalTextColor || 'black') === color.id
+                                      ? 'border-blue-500 ring-2 ring-blue-100 bg-white'
+                                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <div className={`w-4 h-4 rounded-full ${color.bgClass} ${color.textClass} border ${color.borderClass} flex items-center justify-center text-[8px]`}>
+                                    A
+                                  </div>
+                                  <span className="text-[9px] text-slate-700 font-medium">{color.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Background Color */}
+                          <div>
+                            <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Background Color (Select 1 of 12)</span>
+                            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                              {MANUAL_COLORS.map((color) => (
+                                <button
+                                  key={`total-bg-${color.id}`}
+                                  type="button"
+                                  onClick={() => onUpdateSettings({ ...settings, totalBgColor: color.id })}
+                                  className={`p-1.5 rounded-lg border text-center transition-all text-xs font-bold flex flex-col items-center gap-1 cursor-pointer ${
+                                    (settings.totalBgColor || 'white') === color.id
+                                      ? 'border-blue-500 ring-2 ring-blue-100 bg-white'
+                                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <div className={`w-4 h-4 rounded ${color.bgClass} border ${color.borderClass}`} />
+                                  <span className="text-[9px] text-slate-700 font-medium">{color.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rank Selector */}
+                    <div className="bg-slate-50/30 p-4 rounded-xl border border-slate-200/60">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-800">Rank Display Style</h4>
+                          <p className="text-[11px] text-slate-500">Applies to student rank indicators.</p>
+                        </div>
+                        <div className="flex bg-slate-200 p-0.5 rounded-lg text-xs font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => onUpdateSettings({ ...settings, rankColorMode: 'auto' })}
+                            className={`px-3 py-1 rounded-md transition-all cursor-pointer ${(!settings.rankColorMode || settings.rankColorMode === 'auto') ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                          >
+                            Auto Theme
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onUpdateSettings({ 
+                              ...settings, 
+                              rankColorMode: 'manual',
+                              rankTextColor: settings.rankTextColor || 'black',
+                              rankBgColor: settings.rankBgColor || 'white'
+                            })}
+                            className={`px-3 py-1 rounded-md transition-all cursor-pointer ${(settings.rankColorMode === 'manual') ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                          >
+                            Manual
+                          </button>
+                        </div>
+                      </div>
+
+                      {settings.rankColorMode === 'manual' && (
+                        <div className="space-y-4">
+                          {/* Text Color */}
+                          <div>
+                            <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Text Color (Select 1 of 12)</span>
+                            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                              {MANUAL_COLORS.map((color) => (
+                                <button
+                                  key={`rank-text-${color.id}`}
+                                  type="button"
+                                  onClick={() => onUpdateSettings({ ...settings, rankTextColor: color.id })}
+                                  className={`p-1.5 rounded-lg border text-center transition-all text-xs font-bold flex flex-col items-center gap-1 cursor-pointer ${
+                                    (settings.rankTextColor || 'black') === color.id
+                                      ? 'border-blue-500 ring-2 ring-blue-100 bg-white'
+                                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <div className={`w-4 h-4 rounded-full ${color.bgClass} ${color.textClass} border ${color.borderClass} flex items-center justify-center text-[8px]`}>
+                                    A
+                                  </div>
+                                  <span className="text-[9px] text-slate-700 font-medium">{color.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Background Color */}
+                          <div>
+                            <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Background Color (Select 1 of 12)</span>
+                            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                              {MANUAL_COLORS.map((color) => (
+                                <button
+                                  key={`rank-bg-${color.id}`}
+                                  type="button"
+                                  onClick={() => onUpdateSettings({ ...settings, rankBgColor: color.id })}
+                                  className={`p-1.5 rounded-lg border text-center transition-all text-xs font-bold flex flex-col items-center gap-1 cursor-pointer ${
+                                    (settings.rankBgColor || 'white') === color.id
                                       ? 'border-blue-500 ring-2 ring-blue-100 bg-white'
                                       : 'border-slate-200 bg-white hover:bg-slate-50'
                                   }`}
@@ -1467,7 +1752,12 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                               <Database className="w-10 h-10" />
                             </div>
                             <div>
-                              <h3 className="text-xl font-black text-slate-800 group-hover:text-blue-700 transition-colors">{program.name}</h3>
+                              <div className="flex items-center justify-center gap-2 mb-1">
+                                <h3 className="text-xl font-black text-slate-800 group-hover:text-blue-700 transition-colors">{program.name}</h3>
+                                {program.isAdmin && (
+                                  <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded border border-amber-200 tracking-tighter">Admin</span>
+                                )}
+                              </div>
                               <p className="text-sm text-slate-500 mt-2 font-medium">{program.levels.length} levels available</p>
                             </div>
                             <div className="mt-4 px-6 py-2 bg-slate-50 rounded-full text-blue-600 text-xs font-bold uppercase tracking-wider group-hover:bg-blue-50 transition-colors">
@@ -1524,7 +1814,12 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
-                                      <h4 className="font-bold text-slate-800 text-lg truncate leading-tight group-hover:text-indigo-700 transition-colors" title={template.name}>{template.name}</h4>
+                                      <div className="flex items-center gap-2 truncate">
+                                        <h4 className="font-bold text-slate-800 text-lg truncate leading-tight group-hover:text-indigo-700 transition-colors" title={template.name}>{template.name}</h4>
+                                        {template.isAdmin && (
+                                          <span className="shrink-0 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded border border-amber-200 tracking-tighter">Admin</span>
+                                        )}
+                                      </div>
                                       <div className="flex items-center gap-1 shrink-0">
                                         <button 
                                           onClick={() => handleRenameTemplate(template.id, (template as any).authorId, template.name)}
@@ -1574,7 +1869,12 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center justify-between gap-2">
-                                      <h4 className="font-bold text-slate-800 text-lg leading-tight group-hover:text-blue-700 transition-colors">{lvl.name}</h4>
+                                      <div className="flex items-center gap-2 truncate">
+                                        <h4 className="font-bold text-slate-800 text-lg leading-tight group-hover:text-blue-700 transition-colors">{lvl.name}</h4>
+                                        {SYSTEM_TEMPLATES.find(p => p.id === selectedProgramId)?.isAdmin && (
+                                          <span className="shrink-0 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded border border-amber-200 tracking-tighter">Admin</span>
+                                        )}
+                                      </div>
                                       <div className="flex items-center gap-1">
                                         <button 
                                           onClick={(e) => {
@@ -1663,7 +1963,70 @@ export default function SettingsModal({ level, levels, onUpdateLevel, onReplaceL
           )}
 
           {activeTab === 'appearance' && (
-            <div className="p-6">
+            <div className="p-6 space-y-6">
+              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">Layout & Branding</h3>
+                  <p className="text-sm text-slate-500">Customize the background and header colors of your application.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">App Header Background</label>
+                    <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50">
+                      <input 
+                        type="color" 
+                        value={settings.headerBgColor || '#ffffff'} 
+                        onChange={(e) => onUpdateSettings({ ...settings, headerBgColor: e.target.value })}
+                        className="w-10 h-10 p-0 border-0 bg-transparent cursor-pointer rounded overflow-hidden"
+                      />
+                      <div className="flex-1">
+                        <input 
+                          type="text" 
+                          value={settings.headerBgColor || '#ffffff'} 
+                          onChange={(e) => onUpdateSettings({ ...settings, headerBgColor: e.target.value })}
+                          className="w-full text-sm font-mono font-bold bg-transparent border-b border-slate-200 focus:outline-none"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1 italic">Choose a background color for the top info header.</p>
+                      </div>
+                      <button 
+                        onClick={() => onUpdateSettings({ ...settings, headerBgColor: '#ffffff' })}
+                        className="text-[10px] font-bold text-blue-600 hover:underline"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Excel Header Background</label>
+                    <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50">
+                      <input 
+                        type="color" 
+                        value={settings.excelHeaderColor || '#000000'} 
+                        onChange={(e) => onUpdateSettings({ ...settings, excelHeaderColor: e.target.value })}
+                        className="w-10 h-10 p-0 border-0 bg-transparent cursor-pointer rounded overflow-hidden"
+                      />
+                      <div className="flex-1">
+                        <input 
+                          type="text" 
+                          value={settings.excelHeaderColor || '#000000'} 
+                          onChange={(e) => onUpdateSettings({ ...settings, excelHeaderColor: e.target.value })}
+                          className="w-full text-sm font-mono font-bold bg-transparent border-b border-slate-200 focus:outline-none"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1 italic">Fixes "Dark Excel" issue. Choose a lighter color if needed.</p>
+                      </div>
+                      <button 
+                        onClick={() => onUpdateSettings({ ...settings, excelHeaderColor: '#000000' })}
+                        className="text-[10px] font-bold text-blue-600 hover:underline"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="mb-6">
                 <h2 className="text-xl font-semibold text-slate-800">Appearance</h2>
                 <p className="text-sm text-slate-500">Customize the look and feel of your workspace. These options are saved locally for you and do not affect other collaborators.</p>

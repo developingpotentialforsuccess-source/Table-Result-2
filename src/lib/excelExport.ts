@@ -1,10 +1,11 @@
-import { ClassRecord, Level, Student } from '../types';
+import { ClassRecord, Level, Student, TeacherSettings } from '../types';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { generateExportData } from './exportUtils';
 
 function createSheetData(wb: ExcelJS.Workbook, currentRecord: ClassRecord, currentLevel: Level, resultMode: 'full' | 'midterm' | 'final', sheetName: string, styleIndex: number, gridLineLevel: string = 'medium', students?: Student[], detailMode: 'subjects' | 'categories' | 'both' = 'subjects') {
   const data = generateExportData(currentRecord, currentLevel, resultMode, students, detailMode);
+  const settings = (currentRecord.settings || {}) as TeacherSettings;
   
   if (data.length === 0) {
     console.warn(`No data found for sheet: ${sheetName} in mode: ${resultMode}`);
@@ -62,97 +63,108 @@ function createSheetData(wb: ExcelJS.Workbook, currentRecord: ClassRecord, curre
   let passColor = 'FF15803D';
   let failColor = 'FFDC2626';
 
-  switch (styleIndex) {
-    case 1: // Simple / Standard
-      break; 
-    case 2: // Minimalist Grayscale
-      headerBg = 'FF334155';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFF1F5F9';
-      borderColor = 'FF94A3B8';
-      passColor = 'FF000000';
-      failColor = 'FF000000';
-      break;
-    case 3: // Professional Green
-      headerBg = 'FF047857';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFF0FDF4';
-      borderColor = 'FF86EFAC';
-      passColor = 'FF047857';
-      failColor = 'FFDC2626';
-      break;
-    case 4: // Vibrant Purple
-      headerBg = 'FF7E22CE';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFFAF5FF';
-      borderColor = 'FFD8B4FE';
-      passColor = 'FF16A34A';
-      failColor = 'FFEA580C';
-      break;
-    case 5: // High Contrast Dark
-      headerBg = 'FF000000';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFE2E8F0';
-      borderColor = 'FF64748B';
-      passColor = 'FF166534';
-      failColor = 'FF991B1B';
-      break;
-    case 6: // DPS Corporate Navy
-      headerBg = 'FF1E3A8A';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFF1F5F9';
-      borderColor = 'FF94A3B8';
-      passColor = 'FF1E3A8A';
-      failColor = 'FFDC2626';
-      break;
-    case 7: // Warm Orange
-      headerBg = 'FFEA580C';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFFFF7ED';
-      borderColor = 'FFFDBA74';
-      passColor = 'FF15803D';
-      failColor = 'FFEA580C';
-      break;
-    case 8: // Sky Blue
-      headerBg = 'FF0284C7';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFF0F9FF';
-      borderColor = 'FF7DD3FC';
-      passColor = 'FF0369A1';
-      failColor = 'FFBE123C';
-      break;
-    case 9: // Rose Pink
-      headerBg = 'FFE11D48';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFFDF2F8';
-      borderColor = 'FFF9A8D4';
-      passColor = 'FFBE123C';
-      failColor = 'FF000000';
-      break;
-    case 10: // Amber Gold
-      headerBg = 'FFD97706';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFFEF3C7';
-      borderColor = 'FFFCD34D';
-      passColor = 'FF92400E';
-      failColor = 'FFB91C1C';
-      break;
-    case 11: // Teal
-      headerBg = 'FF0D9488';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFF0FDFA';
-      borderColor = 'FF5EEAD4';
-      passColor = 'FF0F766E';
-      failColor = 'FF991B1B';
-      break;
-    case 12: // Slate Dark
-      headerBg = 'FF334155';
-      headerText = 'FFFFFFFF';
-      altRowBg = 'FFF8FAFC';
-      borderColor = 'FFCBD5E1';
-      passColor = 'FF1E293B';
-      failColor = 'FFB91C1C';
-      break;
+  // Apply custom Excel header color if set
+  if (settings.excelHeaderColor) {
+    headerBg = 'FF' + settings.excelHeaderColor.replace('#', '').toUpperCase();
+    // Use white text if the background is dark
+    const r = parseInt(headerBg.slice(2, 4), 16);
+    const g = parseInt(headerBg.slice(4, 6), 16);
+    const b = parseInt(headerBg.slice(6, 8), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    headerText = brightness < 128 ? 'FFFFFFFF' : 'FF000000';
+  } else {
+    switch (styleIndex) {
+      case 1: // Simple / Standard
+        break; 
+      case 2: // Minimalist Grayscale
+        headerBg = 'FF334155';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFF1F5F9';
+        borderColor = 'FF94A3B8';
+        passColor = 'FF000000';
+        failColor = 'FF000000';
+        break;
+      case 3: // Professional Green
+        headerBg = 'FF047857';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFF0FDF4';
+        borderColor = 'FF86EFAC';
+        passColor = 'FF047857';
+        failColor = 'FFDC2626';
+        break;
+      case 4: // Vibrant Purple
+        headerBg = 'FF7E22CE';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFFAF5FF';
+        borderColor = 'FFD8B4FE';
+        passColor = 'FF16A34A';
+        failColor = 'FFEA580C';
+        break;
+      case 5: // High Contrast Dark
+        headerBg = 'FF000000';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFE2E8F0';
+        borderColor = 'FF64748B';
+        passColor = 'FF166534';
+        failColor = 'FF991B1B';
+        break;
+      case 6: // DPS Corporate Navy
+        headerBg = 'FF1E3A8A';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFF1F5F9';
+        borderColor = 'FF94A3B8';
+        passColor = 'FF1E3A8A';
+        failColor = 'FFDC2626';
+        break;
+      case 7: // Warm Orange
+        headerBg = 'FFEA580C';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFFFF7ED';
+        borderColor = 'FFFDBA74';
+        passColor = 'FF15803D';
+        failColor = 'FFEA580C';
+        break;
+      case 8: // Sky Blue
+        headerBg = 'FF0284C7';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFF0F9FF';
+        borderColor = 'FF7DD3FC';
+        passColor = 'FF0369A1';
+        failColor = 'FFBE123C';
+        break;
+      case 9: // Rose Pink
+        headerBg = 'FFE11D48';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFFDF2F8';
+        borderColor = 'FFF9A8D4';
+        passColor = 'FFBE123C';
+        failColor = 'FF000000';
+        break;
+      case 10: // Amber Gold
+        headerBg = 'FFD97706';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFFEF3C7';
+        borderColor = 'FFFCD34D';
+        passColor = 'FF92400E';
+        failColor = 'FFB91C1C';
+        break;
+      case 11: // Teal
+        headerBg = 'FF0D9488';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFF0FDFA';
+        borderColor = 'FF5EEAD4';
+        passColor = 'FF0F766E';
+        failColor = 'FF991B1B';
+        break;
+      case 12: // Slate Dark
+        headerBg = 'FF334155';
+        headerText = 'FFFFFFFF';
+        altRowBg = 'FFF8FAFC';
+        borderColor = 'FFCBD5E1';
+        passColor = 'FF1E293B';
+        failColor = 'FFB91C1C';
+        break;
+    }
   }
   
   const borderStyleVal: any = gridLineLevel === 'light' ? 'hair' : (gridLineLevel === 'heavy' ? 'thick' : (gridLineLevel === 'none' ? 'none' : 'thin'));
@@ -251,18 +263,27 @@ function createSheetData(wb: ExcelJS.Workbook, currentRecord: ClassRecord, curre
 
         let scoreColor = 'FF000000';
         
-        if (pctVal >= 90) {
-          scoreColor = 'FF059669'; // Emerald Green for 90%+ (A)
-        } else if (pctVal >= 80) {
-          scoreColor = 'FF2563EB'; // Vibrant Blue for 80%+ (B)
-        } else if (pctVal >= 70) {
-          scoreColor = 'FF7C3AED'; // Purple for 70%+ (C)
-        } else if (pctVal >= 60) {
-          scoreColor = 'FFE11D48'; // Rose for 60%+ (D)
-        } else if (pctVal >= 50) {
-          scoreColor = 'FFD97706'; // Amber/Orange for 50%+ (E)
+        // Use custom conditional formatting if available
+        if (settings.conditionalFormatting && settings.conditionalFormatting.length > 0) {
+          const rule = settings.conditionalFormatting.find(r => pctVal >= r.min && pctVal <= r.max);
+          if (rule) {
+            scoreColor = 'FF' + rule.color.replace('#', '').toUpperCase();
+          }
         } else {
-          scoreColor = 'FFDC2626'; // Red for < 50% (F)
+          // Default logic
+          if (pctVal >= 90) {
+            scoreColor = 'FF059669'; // Emerald Green for 90%+ (A)
+          } else if (pctVal >= 80) {
+            scoreColor = 'FF2563EB'; // Vibrant Blue for 80%+ (B)
+          } else if (pctVal >= 70) {
+            scoreColor = 'FF7C3AED'; // Purple for 70%+ (C)
+          } else if (pctVal >= 60) {
+            scoreColor = 'FFE11D48'; // Rose for 60%+ (D)
+          } else if (pctVal >= 50) {
+            scoreColor = 'FFD97706'; // Amber/Orange for 50%+ (E)
+          } else {
+            scoreColor = 'FFDC2626'; // Red for < 50% (F)
+          }
         }
         
         cell.font = { 
@@ -300,12 +321,16 @@ function createSheetData(wb: ExcelJS.Workbook, currentRecord: ClassRecord, curre
   
   // Footer
   const footerRow = data.length + 11;
-  const today = new Date();
   
   ws.getCell(`B${footerRow}`).value = "Notes:";
   ws.getCell(`B${footerRow}`).font = { bold: true, name: 'Times New Roman' };
-  ws.getCell(`B${footerRow+1}`).value = "1) Phonics";
-  ws.getCell(`B${footerRow+1}`).font = { name: 'Times New Roman' };
+  
+  // Dynamic notes based on subjects
+  const subjects = currentLevel.subjects;
+  subjects.forEach((s, idx) => {
+    ws.getCell(`B${footerRow + 1 + idx}`).value = `${idx + 1}) ${s.name}`;
+    ws.getCell(`B${footerRow + 1 + idx}`).font = { name: 'Times New Roman' };
+  });
   
   const allNames = currentLevel.subjects.flatMap(s => [s.name, ...s.categories.map(c => c.name)]).join(' ');
   const abbreviationDefinitions = [
@@ -320,18 +345,21 @@ function createSheetData(wb: ExcelJS.Workbook, currentRecord: ClassRecord, curre
     allNames.includes(abb.key)
   );
 
+  const startAbbRow = footerRow + 1 + subjects.length + 1;
   if (activeAbbreviations.length > 0) {
-    ws.getCell(`B${footerRow+3}`).value = "Abbreviations:";
-    ws.getCell(`B${footerRow+3}`).font = { bold: true, name: 'Times New Roman' };
+    ws.getCell(`B${startAbbRow}`).value = "Abbreviations:";
+    ws.getCell(`B${startAbbRow}`).font = { bold: true, name: 'Times New Roman' };
     activeAbbreviations.forEach((abb, idx) => {
-      ws.getCell(`B${footerRow+4+idx}`).value = abb.value;
-      ws.getCell(`B${footerRow+4+idx}`).font = { name: 'Times New Roman' };
+      ws.getCell(`B${startAbbRow + 1 + idx}`).value = abb.value;
+      ws.getCell(`B${startAbbRow + 1 + idx}`).font = { name: 'Times New Roman' };
     });
   }
   
   // right side of footer (moved further right to align with right edge)
   const signCol = Math.max(endCol - 1, 4);
-  ws.getCell(footerRow, signCol).value = "Phnom Penh May 04, 2026";
+  const today = new Date();
+  const dateStr = `Phnom Penh ${today.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })}`;
+  ws.getCell(footerRow, signCol).value = dateStr;
   ws.getCell(footerRow, signCol).font = { name: 'Times New Roman', size: 12 };
   ws.getCell(footerRow, signCol).alignment = { horizontal: 'center' };
   
@@ -347,6 +375,7 @@ function createSheetData(wb: ExcelJS.Workbook, currentRecord: ClassRecord, curre
 function createDashboardSheet(wb: ExcelJS.Workbook, currentRecord: ClassRecord, currentLevel: Level, styleIndex: number, students?: Student[]) {
   const ws = wb.addWorksheet('Dashboard');
   ws.views = [{ showGridLines: true }];
+  const settings = (currentRecord.settings || {}) as TeacherSettings;
   
   // Set widths for dashboard layout columns starting at C (col 3)
   ws.getColumn(1).width = 2;  // Left Margin
@@ -372,6 +401,7 @@ function createDashboardSheet(wb: ExcelJS.Workbook, currentRecord: ClassRecord, 
   }, {});
 
   let headerColor = 'FF1E3A8A'; // Navy Blue default
+  let headerText = 'FFFFFFFF';
   let passColor = 'FF15803D';
   let failColor = 'FFDC2626';
   let cardBgTotal = 'FFE0F2FE'; // Light Blue
@@ -380,124 +410,135 @@ function createDashboardSheet(wb: ExcelJS.Workbook, currentRecord: ClassRecord, 
   let themeLight = 'FFF8FAFC';  // Very light gray
   let accentBorder = 'FFCBD5E1';
 
-  switch (styleIndex) {
-    case 2: // Minimalist Grayscale
-      headerColor = 'FF1E293B';
-      passColor = 'FF000000';
-      failColor = 'FF000000';
-      cardBgTotal = 'FFF1F5F9';
-      cardBgPass = 'FFF1F5F9';
-      cardBgFail = 'FFF1F5F9';
-      themeLight = 'FFFFFFFF';
-      accentBorder = 'FF94A3B8';
-      break;
-    case 3: // Professional Green
-      headerColor = 'FF047857';
-      passColor = 'FF047857';
-      failColor = 'FFDC2626';
-      cardBgTotal = 'FFF0FDF4';
-      cardBgPass = 'FFDCFCE7';
-      cardBgFail = 'FFFEE2E2';
-      themeLight = 'FFF8FAFC';
-      accentBorder = 'FF86EFAC';
-      break;
-    case 4: // Vibrant Purple
-      headerColor = 'FF7E22CE';
-      passColor = 'FF16A34A';
-      failColor = 'FFEA580C';
-      cardBgTotal = 'FFFAF5FF';
-      cardBgPass = 'FFECFDF5';
-      cardBgFail = 'FFFFF7ED';
-      themeLight = 'FFFDF4FF';
-      accentBorder = 'FFD8B4FE';
-      break;
-    case 5: // High Contrast Dark
-      headerColor = 'FF000000';
-      passColor = 'FF166534';
-      failColor = 'FF991B1B';
-      cardBgTotal = 'FFE2E8F0';
-      cardBgPass = 'FFE2E8F0';
-      cardBgFail = 'FFE2E8F0';
-      themeLight = 'FFFFFFFF';
-      accentBorder = 'FF64748B';
-      break;
-    case 6: // DPS Corporate Navy
-      headerColor = 'FF1E3A8A';
-      passColor = 'FF1E3A8A';
-      failColor = 'FFDC2626';
-      cardBgTotal = 'FFF1F5F9';
-      cardBgPass = 'FFDCFCE7';
-      cardBgFail = 'FFFEE2E2';
-      themeLight = 'FFF8FAFC';
-      accentBorder = 'FF94A3B8';
-      break;
-    case 7: // Warm Orange
-      headerColor = 'FFEA580C';
-      passColor = 'FF15803D';
-      failColor = 'FFEA580C';
-      cardBgTotal = 'FFFFF7ED';
-      cardBgPass = 'FFDCFCE7';
-      cardBgFail = 'FFFEE2E2';
-      themeLight = 'FFFFFFFF';
-      accentBorder = 'FFFDBA74';
-      break;
-    case 8: // Sky Blue
-      headerColor = 'FF0284C7';
-      passColor = 'FF0369A1';
-      failColor = 'FFBE123C';
-      cardBgTotal = 'FFF0F9FF';
-      cardBgPass = 'FFDCFCE7';
-      cardBgFail = 'FFFEE2E2';
-      themeLight = 'FFFFFFFF';
-      accentBorder = 'FF7DD3FC';
-      break;
-    case 9: // Rose Pink
-      headerColor = 'FFE11D48';
-      passColor = 'FFBE123C';
-      failColor = 'FF000000';
-      cardBgTotal = 'FFFDF2F8';
-      cardBgPass = 'FFDCFCE7';
-      cardBgFail = 'FFFEE2E2';
-      themeLight = 'FFFFFFFF';
-      accentBorder = 'FFF9A8D4';
-      break;
-    case 10: // Amber Gold
-      headerColor = 'FFD97706';
-      passColor = 'FF92400E';
-      failColor = 'FFB91C1C';
-      cardBgTotal = 'FFFEF3C7';
-      cardBgPass = 'FFDCFCE7';
-      cardBgFail = 'FFFEE2E2';
-      themeLight = 'FFFFFFFF';
-      accentBorder = 'FFFCD34D';
-      break;
-    case 11: // Teal
-      headerColor = 'FF0D9488';
-      passColor = 'FF0F766E';
-      failColor = 'FF991B1B';
-      cardBgTotal = 'FFF0FDFA';
-      cardBgPass = 'FFDCFCE7';
-      cardBgFail = 'FFFEE2E2';
-      themeLight = 'FFFFFFFF';
-      accentBorder = 'FF5EEAD4';
-      break;
-    case 12: // Slate Dark
-      headerColor = 'FF334155';
-      passColor = 'FF1E293B';
-      failColor = 'FFB91C1C';
-      cardBgTotal = 'FFF8FAFC';
-      cardBgPass = 'FFDCFCE7';
-      cardBgFail = 'FFFEE2E2';
-      themeLight = 'FFFFFFFF';
-      accentBorder = 'FFCBD5E1';
-      break;
+  // Apply custom Excel header color if set
+  if (settings.excelHeaderColor) {
+    headerColor = 'FF' + settings.excelHeaderColor.replace('#', '').toUpperCase();
+    // Use white text if the background is dark
+    const r = parseInt(headerColor.slice(2, 4), 16);
+    const g = parseInt(headerColor.slice(4, 6), 16);
+    const b = parseInt(headerColor.slice(6, 8), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    headerText = brightness < 128 ? 'FFFFFFFF' : 'FF000000';
+  } else {
+    switch (styleIndex) {
+      case 2: // Minimalist Grayscale
+        headerColor = 'FF1E293B';
+        passColor = 'FF000000';
+        failColor = 'FF000000';
+        cardBgTotal = 'FFF1F5F9';
+        cardBgPass = 'FFF1F5F9';
+        cardBgFail = 'FFF1F5F9';
+        themeLight = 'FFFFFFFF';
+        accentBorder = 'FF94A3B8';
+        break;
+      case 3: // Professional Green
+        headerColor = 'FF047857';
+        passColor = 'FF047857';
+        failColor = 'FFDC2626';
+        cardBgTotal = 'FFF0FDF4';
+        cardBgPass = 'FFDCFCE7';
+        cardBgFail = 'FFFEE2E2';
+        themeLight = 'FFF8FAFC';
+        accentBorder = 'FF86EFAC';
+        break;
+      case 4: // Vibrant Purple
+        headerColor = 'FF7E22CE';
+        passColor = 'FF16A34A';
+        failColor = 'FFEA580C';
+        cardBgTotal = 'FFFAF5FF';
+        cardBgPass = 'FFECFDF5';
+        cardBgFail = 'FFFFF7ED';
+        themeLight = 'FFFDF4FF';
+        accentBorder = 'FFD8B4FE';
+        break;
+      case 5: // High Contrast Dark
+        headerColor = 'FF000000';
+        passColor = 'FF166534';
+        failColor = 'FF991B1B';
+        cardBgTotal = 'FFE2E8F0';
+        cardBgPass = 'FFE2E8F0';
+        cardBgFail = 'FFE2E8F0';
+        themeLight = 'FFFFFFFF';
+        accentBorder = 'FF64748B';
+        break;
+      case 6: // DPS Corporate Navy
+        headerColor = 'FF1E3A8A';
+        passColor = 'FF1E3A8A';
+        failColor = 'FFDC2626';
+        cardBgTotal = 'FFF1F5F9';
+        cardBgPass = 'FFDCFCE7';
+        cardBgFail = 'FFFEE2E2';
+        themeLight = 'FFF8FAFC';
+        accentBorder = 'FF94A3B8';
+        break;
+      case 7: // Warm Orange
+        headerColor = 'FFEA580C';
+        passColor = 'FF15803D';
+        failColor = 'FFEA580C';
+        cardBgTotal = 'FFFFF7ED';
+        cardBgPass = 'FFDCFCE7';
+        cardBgFail = 'FFFEE2E2';
+        themeLight = 'FFFFFFFF';
+        accentBorder = 'FFFDBA74';
+        break;
+      case 8: // Sky Blue
+        headerColor = 'FF0284C7';
+        passColor = 'FF0369A1';
+        failColor = 'FFBE123C';
+        cardBgTotal = 'FFF0F9FF';
+        cardBgPass = 'FFDCFCE7';
+        cardBgFail = 'FFFEE2E2';
+        themeLight = 'FFFFFFFF';
+        accentBorder = 'FF7DD3FC';
+        break;
+      case 9: // Rose Pink
+        headerColor = 'FFE11D48';
+        passColor = 'FFBE123C';
+        failColor = 'FF000000';
+        cardBgTotal = 'FFFDF2F8';
+        cardBgPass = 'FFDCFCE7';
+        cardBgFail = 'FFFEE2E2';
+        themeLight = 'FFFFFFFF';
+        accentBorder = 'FFF9A8D4';
+        break;
+      case 10: // Amber Gold
+        headerColor = 'FFD97706';
+        passColor = 'FF92400E';
+        failColor = 'FFB91C1C';
+        cardBgTotal = 'FFFEF3C7';
+        cardBgPass = 'FFDCFCE7';
+        cardBgFail = 'FFFEE2E2';
+        themeLight = 'FFFFFFFF';
+        accentBorder = 'FFFCD34D';
+        break;
+      case 11: // Teal
+        headerColor = 'FF0D9488';
+        passColor = 'FF0F766E';
+        failColor = 'FF991B1B';
+        cardBgTotal = 'FFF0FDFA';
+        cardBgPass = 'FFDCFCE7';
+        cardBgFail = 'FFFEE2E2';
+        themeLight = 'FFFFFFFF';
+        accentBorder = 'FF5EEAD4';
+        break;
+      case 12: // Slate Dark
+        headerColor = 'FF334155';
+        passColor = 'FF1E293B';
+        failColor = 'FFB91C1C';
+        cardBgTotal = 'FFF8FAFC';
+        cardBgPass = 'FFDCFCE7';
+        cardBgFail = 'FFFEE2E2';
+        themeLight = 'FFFFFFFF';
+        accentBorder = 'FFCBD5E1';
+        break;
+    }
   }
 
   // --- Title Banner ---
   ws.mergeCells('C2:G3');
   const titleCell = ws.getCell('C2');
   titleCell.value = 'DEVELOPING POTENTIAL FOR SUCCESS - PERFORMANCE DASHBOARD';
-  titleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' }, name: 'Times New Roman' };
+  titleCell.font = { bold: true, size: 14, color: { argb: headerText }, name: 'Times New Roman' };
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerColor } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
   ws.getRow(2).height = 20;

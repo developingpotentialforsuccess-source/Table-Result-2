@@ -5,6 +5,7 @@ export const SYSTEM_TEMPLATES = [
     id: 'full-time-english',
     name: 'Full-Time English Program',
     authorName: 'System',
+    isAdmin: true,
     levels: [
       {
         id: 'fte_2a',
@@ -527,6 +528,7 @@ export const SYSTEM_TEMPLATES = [
     id: 'part-time-english',
     name: 'Part-Time English Program',
     authorName: 'System',
+    isAdmin: true,
     levels: [
       {
         id: 'pte_foundation_a',
@@ -560,24 +562,28 @@ export const SYSTEM_TEMPLATES = [
     id: 'era-program',
     name: 'ERA Program',
     authorName: 'System',
+    isAdmin: true,
     levels: []
   },
   {
     id: 'level-foundation-program',
     name: 'Level Foundation Program',
     authorName: 'System',
+    isAdmin: true,
     levels: []
   },
   {
     id: 'khmer-program',
     name: 'Khmer Program',
     authorName: 'System',
+    isAdmin: true,
     levels: []
   },
   {
     id: 'dpss-program',
     name: 'DPSS Program',
     authorName: 'System',
+    isAdmin: true,
     levels: [
       {
         id: 'dpss_level_6',
@@ -663,12 +669,14 @@ export const SYSTEM_TEMPLATES = [
     id: 'math-program',
     name: 'Math Program',
     authorName: 'System',
+    isAdmin: true,
     levels: []
   },
   {
     id: 'mtis-program',
     name: 'MTIS Program',
     authorName: 'System',
+    isAdmin: true,
     levels: [
       {
         id: 'mtis_l1',

@@ -178,6 +178,19 @@ export default function GradeTable({
   gridLineLevel = "medium",
   settings,
 }: Props) {
+  const getScoreColor = (pct: number) => {
+    if (settings?.conditionalFormatting && settings.conditionalFormatting.length > 0) {
+      // Find the first rule that matches
+      const rule = settings.conditionalFormatting.find(r => pct >= r.min && pct <= r.max);
+      if (rule) return rule.color;
+    }
+    
+    // Fallback defaults
+    if (pct >= 95) return "#059669"; // Green
+    if (pct >= 50) return "#2563eb"; // Blue
+    return "#dc2626"; // Red
+  };
+
   const headerStyleClass = useMemo(() => {
     let classes = "text-center transition-colors ";
     if (settings?.headerWeight === 'bold') classes += "font-bold ";
@@ -201,7 +214,7 @@ export default function GradeTable({
   }, [settings?.colorDensity]);
 
   const getManualStyle = (
-    mode: 'avg' | 'result',
+    mode: 'avg' | 'result' | 'total' | 'rank',
     fallbackTextClass: string,
     fallbackBgClass: string
   ) => {
@@ -219,11 +232,25 @@ export default function GradeTable({
         const borderCls = settings.resultBgColor ? (MANUAL_COLORS.find(c => c.id === settings.resultBgColor || c.bgClass === settings.resultBgColor)?.borderClass || 'border-slate-300') : gridStyles.bodyBorderClass;
         return { textClass: textCls, bgClass: bgCls, borderClass: borderCls };
       }
+    } else if (mode === 'total') {
+      if (settings?.totalColorMode === 'manual') {
+        const textCls = settings.totalTextColor ? (MANUAL_COLORS.find(c => c.id === settings.totalTextColor || c.textClass === settings.totalTextColor)?.textClass || settings.totalTextColor) : 'text-slate-900';
+        const bgCls = settings.totalBgColor ? (MANUAL_COLORS.find(c => c.id === settings.totalBgColor || c.bgClass === settings.totalBgColor)?.bgClass || settings.totalBgColor) : 'bg-white';
+        const borderCls = settings.totalBgColor ? (MANUAL_COLORS.find(c => c.id === settings.totalBgColor || c.bgClass === settings.totalBgColor)?.borderClass || 'border-slate-300') : gridStyles.totalBorderClass;
+        return { textClass: textCls, bgClass: bgCls, borderClass: borderCls };
+      }
+    } else if (mode === 'rank') {
+      if (settings?.rankColorMode === 'manual') {
+        const textCls = settings.rankTextColor ? (MANUAL_COLORS.find(c => c.id === settings.rankTextColor || c.textClass === settings.rankTextColor)?.textClass || settings.rankTextColor) : 'text-slate-900';
+        const bgCls = settings.rankBgColor ? (MANUAL_COLORS.find(c => c.id === settings.rankBgColor || c.bgClass === settings.rankBgColor)?.bgClass || settings.rankBgColor) : 'bg-white';
+        const borderCls = settings.rankBgColor ? (MANUAL_COLORS.find(c => c.id === settings.rankBgColor || c.bgClass === settings.rankBgColor)?.borderClass || 'border-slate-300') : gridStyles.totalBorderClass;
+        return { textClass: textCls, bgClass: bgCls, borderClass: borderCls };
+      }
     }
     return { 
       textClass: fallbackTextClass, 
       bgClass: fallbackBgClass, 
-      borderClass: mode === 'avg' ? gridStyles.totalBorderClass : gridStyles.bodyBorderClass 
+      borderClass: (mode === 'avg' || mode === 'total' || mode === 'rank') ? gridStyles.totalBorderClass : gridStyles.bodyBorderClass 
     };
   };
 
@@ -563,7 +590,7 @@ export default function GradeTable({
             if (keepWtd) {
               const activeWeight = getCategoryActiveWeight(category, subject, resultMode);
               
-              const wtdLabel = "W (%)";
+              const wtdLabel = settings?.hideWeightSymbol ? `W${activeWeight}` : "W (%)";
 
               itemCols.push({
                 categoryId: category.id,
@@ -641,7 +668,7 @@ export default function GradeTable({
             if (effectiveShowWtd) {
               const activeWeight = getCategoryActiveWeight(category, subject, resultMode);
               
-              const wtdLabel = "W (%)";
+              const wtdLabel = settings?.hideWeightSymbol ? `W${activeWeight}` : "W (%)";
 
               itemCols.push({
                 categoryId: category.id,
@@ -659,7 +686,7 @@ export default function GradeTable({
             }
 
             if (catSpan === 0) {
-              const weightLabel = "W (%)";
+              const weightLabel = settings?.hideWeightSymbol ? "W" : "W (%)";
               itemCols.push({
                 categoryId: category.id,
                 subjectId: subject.id,
@@ -1358,8 +1385,15 @@ export default function GradeTable({
                 >
                   <div className="flex flex-col items-center justify-center gap-1">
                     <div className="flex items-center justify-center gap-2">
-                      <span className="truncate max-w-[150px] uppercase" title={sc.subject.name}>
+                      <span 
+                        className="truncate max-w-[150px] uppercase cursor-help group/subject-name relative flex items-center gap-1" 
+                        title={sc.subject.name}
+                      >
                         {sc.subject.name}
+                        <Search className="w-2.5 h-2.5 text-slate-400 group-hover/subject-name:text-blue-500 transition-colors" />
+                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-slate-800 text-white text-[10px] font-bold rounded opacity-0 group-hover/subject-name:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-xl border border-slate-700">
+                          Weight: {getSubjectWeight(sc.subject, resultMode)}%
+                        </span>
                       </span>
 
                       {!sc.isHidden && resultMode === 'full' && (
@@ -1525,38 +1559,51 @@ export default function GradeTable({
             })}
             {level.subjects.length > 0 && (
               <>
-                <th
-                  rowSpan={resultMode === 'full' ? 3 : 2}
-                  className={`px-4 py-3 font-bold border-l ${gridStyles.totalBorderClass} text-center shadow-[-1px_0_0_0_#bae6fd] cursor-pointer transition-colors bg-blue-100 text-blue-950 hover:bg-blue-200`}
-                  onClick={() => handleSort("finalScore")}
-                >
-                  <div className="flex items-center justify-center gap-1">
-                    {resultMode === 'midterm' ? 'TOTAL %' : (resultMode === 'final' ? 'TOTAL %' : 'TOTAL %')} <ArrowUpDown className={`w-3 h-3 ${resultMode === 'final' ? 'text-purple-400' : 'text-blue-400'}`} />
-                  </div>
-                </th>
-                <th
-                  rowSpan={resultMode === 'full' ? 3 : 2}
-                  className={`px-4 py-3 font-bold border-l ${gridStyles.totalBorderClass} text-center cursor-pointer transition-colors ${
-                    resultMode === 'midterm' ? 'bg-blue-100 hover:bg-blue-200' : 
-                    resultMode === 'final' ? 'bg-purple-100 hover:bg-purple-200' : 
-                    'bg-blue-50 hover:bg-blue-100'
-                  }`}
-                  onClick={() => handleSort("rank")}
-                >
-                  <div className="flex items-center justify-center gap-1">
-                    RANK <ArrowUpDown className={`w-3 h-3 ${resultMode === 'final' ? 'text-purple-400' : 'text-blue-400'}`} />
-                  </div>
-                </th>
-                <th
-                  rowSpan={resultMode === 'full' ? 3 : 2}
-                  className={`px-4 py-3 font-bold border-l ${gridStyles.totalBorderClass} text-center ${
-                    resultMode === 'midterm' ? 'bg-blue-100' : 
-                    resultMode === 'final' ? 'bg-purple-100' : 
-                    'bg-blue-50'
-                  }`}
-                >
-                  GRADE
-                </th>
+                {(() => {
+                  const style = getManualStyle('avg', 'bg-blue-100 text-blue-950 hover:bg-blue-200', '');
+                  return (
+                    <th
+                      rowSpan={resultMode === 'full' ? 3 : 2}
+                      className={`px-4 py-3 font-bold border-l ${style.borderClass} text-center shadow-[-1px_0_0_0_#bae6fd] cursor-pointer transition-colors ${style.bgClass} ${style.textClass}`}
+                      onClick={() => handleSort("finalScore")}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        {resultMode === 'midterm' ? 'TOTAL %' : (resultMode === 'final' ? 'TOTAL %' : 'TOTAL %')} <ArrowUpDown className={`w-3 h-3 ${resultMode === 'final' ? 'text-purple-400' : 'text-blue-400'}`} />
+                      </div>
+                    </th>
+                  );
+                })()}
+                {(() => {
+                  const fallbackBg = resultMode === 'midterm' ? 'bg-blue-100 hover:bg-blue-200' : 
+                                     resultMode === 'final' ? 'bg-purple-100 hover:bg-purple-200' : 
+                                     'bg-blue-50 hover:bg-blue-100';
+                  const style = getManualStyle('rank', fallbackBg, '');
+                  return (
+                    <th
+                      rowSpan={resultMode === 'full' ? 3 : 2}
+                      className={`px-4 py-3 font-bold border-l ${style.borderClass} text-center cursor-pointer transition-colors ${style.bgClass} ${style.textClass}`}
+                      onClick={() => handleSort("rank")}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        RANK <ArrowUpDown className={`w-3 h-3 ${resultMode === 'final' ? 'text-purple-400' : 'text-blue-400'}`} />
+                      </div>
+                    </th>
+                  );
+                })()}
+                {(() => {
+                  const fallbackBg = resultMode === 'midterm' ? 'bg-blue-100' : 
+                                     resultMode === 'final' ? 'bg-purple-100' : 
+                                     'bg-blue-50';
+                  const style = getManualStyle('total', fallbackBg, '');
+                  return (
+                    <th
+                      rowSpan={resultMode === 'full' ? 3 : 2}
+                      className={`px-4 py-3 font-bold border-l ${style.borderClass} text-center ${style.bgClass} ${style.textClass}`}
+                    >
+                      GRADE
+                    </th>
+                  );
+                })()}
                 <th
                   rowSpan={resultMode === 'full' ? 3 : 2}
                   className={`px-4 py-3 font-bold bg-blue-50 border-l ${gridStyles.totalBorderClass} text-center`}
@@ -1991,17 +2038,19 @@ export default function GradeTable({
                       const score = scoreValue;
                       const isFullMode = resultMode === 'full';
                       
-                      if (isFullMode) {
-                        const cellBg = ic.categoryId.includes('midterm') ? 'bg-orange-50/70 text-orange-950 font-bold' : 'bg-teal-50/70 text-teal-950 font-bold';
-                        return (
-                          <td
-                            key={`${ic.categoryId}_exam_${i}`}
-                            className={`px-1 py-1 border-r border-b ${gridStyles.bodyBorderClass} text-center text-sm ${cellBg} w-24 min-w-[6rem]`}
-                          >
-                            {score !== undefined && score !== null ? parseFloat((score as number).toFixed(2)) : "-"}
-                          </td>
-                        );
-                      }
+                    if (isFullMode) {
+                      const cellBg = ic.categoryId.includes('midterm') ? 'bg-orange-50/70 text-orange-950 font-bold' : 'bg-teal-50/70 text-teal-950 font-bold';
+                      const customColor = typeof score === 'number' ? getScoreColor(score) : undefined;
+                      return (
+                        <td
+                          key={`${ic.categoryId}_exam_${i}`}
+                          className={`px-1 py-1 border-r border-b ${gridStyles.bodyBorderClass} text-center text-sm ${cellBg} w-24 min-w-[6rem]`}
+                          style={customColor ? { color: customColor } : {}}
+                        >
+                          {score !== undefined && score !== null ? parseFloat((score as number).toFixed(2)) : "-"}
+                        </td>
+                      );
+                    }
 
                       return (
                         <td
@@ -2029,6 +2078,7 @@ export default function GradeTable({
                                    ? "bg-red-600 text-white border-red-700 ring-2 ring-red-200 z-10" 
                                    : `bg-white border-slate-200 hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 ${getScoreColorClass(settings)} shadow-sm`
                                 }`}
+                              style={typeof score === 'number' && score <= ic.maxScore ? { color: getScoreColor((score / ic.maxScore) * 100) } : {}}
                               placeholder={isFullMode && !isManual ? `(${metrics.subjectScores?.[ic.categoryId.includes('midterm') ? `exam_midterm_computed_${ic.subjectId}` : `exam_final_computed_${ic.subjectId}`]?.toFixed(1)})` : "-"}
                             />
                             {isFullMode && (
@@ -2122,18 +2172,20 @@ export default function GradeTable({
                   }
 
                   if (ic.itemIndex === -98) {
-                    const subPct = metrics.subjectScores?.[`${ic.subjectId}_pct`] || 0;
-                    const isLow = subPct < 70;
-                    const style = getManualStyle('result', isLow ? 'text-red-600' : 'text-blue-900', 'bg-blue-50/50');
-                    return (
-                      <td
-                        key={`combined_avg_${ic.subjectId}_${i}`}
-                        className={`px-1 py-1 border-r border-l ${gridStyles.totalBorderClass} border-b ${style.borderClass} font-bold text-center text-sm ${style.textClass} ${style.bgClass} w-24 min-w-[6rem] shadow-[-1px_0_0_0_#cbd5e1]`}
-                        title={`Subject Percentage Score: ${subPct.toFixed(1)}%`}
-                      >
-                        {subPct.toFixed(1)}%
-                      </td>
-                    );
+                      const subPct = metrics.subjectScores?.[`${ic.subjectId}_pct`] || 0;
+                      const isLow = subPct < 70;
+                      const customColor = getScoreColor(subPct);
+                      const style = getManualStyle('result', isLow ? 'text-red-600' : 'text-blue-900', 'bg-blue-50/50');
+                      return (
+                        <td
+                          key={`combined_avg_${ic.subjectId}_${i}`}
+                          className={`px-1 py-1 border-r border-l ${gridStyles.totalBorderClass} border-b ${style.borderClass} font-bold text-center text-sm ${style.textClass} ${style.bgClass} w-24 min-w-[6rem] shadow-[-1px_0_0_0_#cbd5e1]`}
+                          style={{ color: customColor }}
+                          title={`Subject Percentage Score: ${subPct.toFixed(1)}%`}
+                        >
+                          {subPct.toFixed(1)}%
+                        </td>
+                      );
                   }
 
                   if (ic.itemIndex === -99) {
@@ -2250,7 +2302,9 @@ export default function GradeTable({
                     {(() => {
                       const style = getManualStyle('avg', 'text-blue-900', 'bg-blue-50');
                       return (
-                        <td className={`px-2 py-2 ${style.bgClass} font-bold text-center border-l border-b ${gridStyles.totalBorderClass} shadow-[-1px_0_0_0_#eff6ff] text-sm ${style.textClass}`}>
+                        <td className={`px-2 py-2 ${style.bgClass} font-bold text-center border-l border-b ${style.borderClass} shadow-[-1px_0_0_0_#eff6ff] text-sm ${style.textClass}`}
+                          style={{ color: getScoreColor(metrics.performancePct) }}
+                        >
                           <div className="flex flex-col items-center">
                             <span title="Overall Percentage Score (Weighted Average)">
                               {metrics.performancePct.toFixed(1)}%
@@ -2259,32 +2313,46 @@ export default function GradeTable({
                         </td>
                       );
                     })()}
-                    <td className={`px-2 py-2 ${scoreBg} font-bold text-slate-700 text-center border-l border-b ${gridStyles.totalBorderClass} text-sm`}>
-                      {rank}
-                    </td>
-                    <td className={`px-2 py-2 ${scoreBg} text-center border-l border-b ${gridStyles.totalBorderClass} min-w-[70px]`}>
-                      <div className="flex flex-col items-center">
-                        <span
-                          className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-black border shadow-sm ${
-                            grade.startsWith("A")
-                              ? "bg-purple-100 text-purple-800 border-purple-200"
-                              : grade.startsWith("B")
-                                ? "bg-blue-100 text-blue-800 border-blue-200"
-                                : grade.startsWith("C")
-                                  ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                                  : grade.startsWith("D")
-                                    ? "bg-amber-100 text-amber-800 border-amber-200"
-                                    : grade.startsWith("E")
-                                      ? "bg-orange-100 text-orange-800 border-orange-200"
-                                      : grade.startsWith("P") || grade.toLowerCase().includes("pass")
-                                        ? "bg-green-100 text-green-800 border-green-200"
-                                        : "bg-red-100 text-red-800 border-red-200"
-                          }`}
+                    {(() => {
+                      const style = getManualStyle('rank', 'text-slate-700', scoreBg);
+                      return (
+                        <td className={`px-2 py-2 ${style.bgClass} font-bold text-center border-l border-b ${style.borderClass} text-sm ${style.textClass}`}
+                          style={{ color: getScoreColor(metrics.performancePct) }}
                         >
-                          {grade}
-                        </span>
-                      </div>
-                    </td>
+                          {rank}
+                        </td>
+                      );
+                    })()}
+                    {(() => {
+                      const style = getManualStyle('total', 'text-slate-700', scoreBg);
+                      return (
+                        <td className={`px-2 py-2 ${style.bgClass} text-center border-l border-b ${style.borderClass} min-w-[70px] ${style.textClass}`}
+                          style={{ color: getScoreColor(metrics.performancePct) }}
+                        >
+                          <div className="flex flex-col items-center">
+                            <span
+                              className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-black border shadow-sm ${
+                                grade.startsWith("A")
+                                  ? "bg-purple-100 text-purple-800 border-purple-200"
+                                  : grade.startsWith("B")
+                                    ? "bg-blue-100 text-blue-800 border-blue-200"
+                                    : grade.startsWith("C")
+                                      ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                                      : grade.startsWith("D")
+                                        ? "bg-amber-100 text-amber-800 border-amber-200"
+                                        : grade.startsWith("E")
+                                          ? "bg-orange-100 text-orange-800 border-orange-200"
+                                          : grade.startsWith("P") || grade.toLowerCase().includes("pass")
+                                            ? "bg-green-100 text-green-800 border-green-200"
+                                            : "bg-red-100 text-red-800 border-red-200"
+                              }`}
+                            >
+                              {grade}
+                            </span>
+                          </div>
+                        </td>
+                      );
+                    })()}
                     <td className={`px-2 py-2 ${scoreBg} text-center border-l border-b ${gridStyles.totalBorderClass} min-w-[70px]`}>
                       <div className="flex flex-col items-center">
                         <span

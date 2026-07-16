@@ -110,12 +110,22 @@ export interface TeacherSettings {
   attendanceS2Label?: string;
   excelStyleIndex?: number;
   excelGridLineLevel?: 'none' | 'light' | 'medium' | 'heavy';
+  excelHeaderColor?: string;
+  headerBgColor?: string;
+  hideWeightSymbol?: boolean;
+  conditionalFormatting?: { min: number; max: number; color: string; id: string }[];
   avgColorMode?: 'auto' | 'manual';
   avgTextColor?: string;
   avgBgColor?: string;
   resultColorMode?: 'auto' | 'manual';
   resultTextColor?: string;
   resultBgColor?: string;
+  totalColorMode?: 'auto' | 'manual';
+  totalTextColor?: string;
+  totalBgColor?: string;
+  rankColorMode?: 'auto' | 'manual';
+  rankTextColor?: string;
+  rankBgColor?: string;
   quizNoScoreWeeks?: number;
   attendanceNoScoreWeeks?: number;
   quizNoScoreDays?: number;
@@ -294,7 +304,18 @@ export function isFinalCat(cat: Category): boolean {
   return isFinalCategoryName(cat.name);
 }
 
-export function getSubjectWeight(subject: Subject): number {
+export function getSubjectWeight(subject: Subject, resultMode: 'full' | 'midterm' | 'final' = 'full'): number {
+  if (resultMode === 'midterm') {
+    return subject.midtermTargetWeight !== undefined && subject.midtermTargetWeight > 0 
+      ? subject.midtermTargetWeight 
+      : (subject.midtermMaxScore || 100);
+  }
+  if (resultMode === 'final') {
+    return subject.finalTargetWeight !== undefined && subject.finalTargetWeight > 0 
+      ? subject.finalTargetWeight 
+      : (subject.finalMaxScore || 100);
+  }
+  
   const catWeight = subject.categories
     .filter(cat => !isMidtermCat(cat) && !isFinalCat(cat))
     .reduce((sum, cat) => sum + (cat.weight || 0), 0);

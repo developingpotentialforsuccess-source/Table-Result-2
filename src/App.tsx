@@ -33,7 +33,9 @@ import {
   Clipboard,
   SlidersHorizontal,
   Eye,
-  EyeOff
+  EyeOff,
+  User as UserIcon,
+  BookOpen
 } from "lucide-react";
 import {
   Level,
@@ -57,7 +59,7 @@ import { exportToExcelFull } from "./lib/excelExport";
 import { exportToPDFFull } from "./lib/pdfExport";
 import { SYSTEM_TEMPLATES } from "./lib/templates";
 import { auth, googleProvider, db, isFirebaseConfigured } from "./lib/firebase";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, updateDoc, query, where } from "firebase/firestore";
 import {
   signInWithPopup,
   signOut,
@@ -111,6 +113,14 @@ const DEFAULT_SETTINGS: TeacherSettings = {
   attendanceS2Label: 'S2',
   excelStyleIndex: 6, // Default to DPS Corporate Navy
   excelGridLineLevel: 'medium',
+  excelHeaderColor: '#000000',
+  headerBgColor: 'transparent',
+  hideWeightSymbol: false,
+  conditionalFormatting: [
+    { id: '1', min: 95, max: 100, color: '#059669' }, // light green
+    { id: '2', min: 50, max: 94.99, color: '#2563eb' }, // blue
+    { id: '3', min: 0, max: 49.99, color: '#dc2626' }, // red
+  ],
   attendanceDaysOfWeek: 'Mon-Fri',
   gradingScale: [
     { grade: 'A+', minScore: 90 },
@@ -742,7 +752,8 @@ export default function App() {
         authorName: currentRecord.teacherName || user.displayName || "Admin",
         authorEmail: user.email,
         levels: [level],
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        isAdmin: true
       };
       
       await addDoc(collection(db, "templates"), newTemplate);
@@ -751,6 +762,68 @@ export default function App() {
     } catch (e) {
       console.error("Error publishing template:", e);
       alert("Failed to publish template. Error: " + (e instanceof Error ? e.message : String(e)));
+    }
+  };
+
+  const handleSaveAdminTemplate = async () => {
+    if (!currentRecord) return;
+    
+    if (!isFirebaseConfigured()) {
+      alert("Firebase is not configured yet. Set up Firebase to sync templates.");
+      return;
+    }
+
+    if (!user) {
+      alert("Please login first.");
+      handleLogin();
+      return;
+    }
+
+    const templateName = prompt("Enter template name to sync/save:", currentRecord.className);
+    if (!templateName) return;
+
+    try {
+      const level = levels.find(l => l.id === currentRecord.levelId);
+      if (!level) {
+        alert("Level not found.");
+        return;
+      }
+
+      // Check if a template with this name already exists by this user
+      const q = query(
+        collection(db, "templates"), 
+        where("name", "==", templateName),
+        where("authorEmail", "==", user.email)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        // Update existing
+        const docRef = querySnapshot.docs[0].ref;
+        await updateDoc(docRef, {
+          levels: [level],
+          lastSyncedAt: new Date().toISOString(),
+          isAdmin: true
+        });
+        alert(`Template "${templateName}" synced and updated successfully!`);
+      } else {
+        // Create new
+        const newTemplate = {
+          name: templateName,
+          authorName: currentRecord.teacherName || user.displayName || "Admin",
+          authorEmail: user.email,
+          levels: [level],
+          createdAt: new Date().toISOString(),
+          lastSyncedAt: new Date().toISOString(),
+          isAdmin: true
+        };
+        await addDoc(collection(db, "templates"), newTemplate);
+        alert(`New Admin Template "${templateName}" saved and synced!`);
+      }
+      fetchTemplates();
+    } catch (e) {
+      console.error("Error syncing admin template:", e);
+      alert("Failed to sync template.");
     }
   };
 
@@ -1745,7 +1818,10 @@ export default function App() {
       className={`min-h-screen ${currentWp.bgClass} text-slate-900 font-sans flex flex-col transition-colors duration-200`}
     >
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 relative z-30 shadow-sm">
+      <header 
+        className="border-b border-slate-200 px-4 sm:px-6 py-4 relative z-30 shadow-sm transition-colors duration-500"
+        style={{ backgroundColor: currentRecord?.settings?.headerBgColor || '#ffffff' }}
+      >
         <div className="max-w-[1400px] mx-auto space-y-4">
           {/* Top Brand & Status Line */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-100 pb-3">
@@ -1754,20 +1830,29 @@ export default function App() {
                 <Calculator className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <h1 className={`text-lg font-black tracking-tight flex items-center gap-2 ${currentRecord?.settings?.headerBgColor && currentRecord.settings.headerBgColor !== 'transparent' && currentRecord.settings.headerBgColor !== '#ffffff' ? 'text-white' : 'text-slate-900'}`}>
                   DEVELOPING POTENTIAL FOR SUCCESS
                   <span className="text-[10px] bg-orange-100 text-orange-800 font-extrabold px-2 py-0.5 rounded uppercase tracking-wider">
                     {resultMode === 'full' ? 'Full Term' : resultMode === 'midterm' ? 'Mid-Term' : 'Final Exam'}
                   </span>
                 </h1>
-                <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${getTeacherColorClasses(currentRecord?.teacherName || "").pill}`}>
-                    {currentRecord?.teacherName || "Teacher"}
-                  </span>
-                  <span>
-                    Class: <span className="font-bold text-slate-700">{currentRecord?.className}</span> • Term: <span className="font-bold text-slate-700">{currentRecord?.termName}</span>
-                  </span>
-                </p>
+                <div className={`text-xs font-medium flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 ${currentRecord?.settings?.headerBgColor && currentRecord.settings.headerBgColor !== 'transparent' && currentRecord.settings.headerBgColor !== '#ffffff' ? 'text-white/80' : 'text-slate-500'}`}>
+                  <div className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded-md border border-black/5">
+                    <UserIcon className="w-3 h-3" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Teacher:</span>
+                    <span className="font-black text-xs uppercase">{currentRecord?.teacherName || "Teacher"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded-md border border-black/5">
+                    <BookOpen className="w-3 h-3" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Class:</span>
+                    <span className="font-black text-xs uppercase">{currentRecord?.className || "Class Name"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded-md border border-black/5">
+                    <Calendar className="w-3 h-3" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Term:</span>
+                    <span className="font-black text-xs uppercase">{currentRecord?.termName || "Term Name"}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2276,15 +2361,15 @@ export default function App() {
                   title="Share this level's structure as a template"
                >
                   <FolderOpen className="w-3 h-3" />
-                  Share as Template
+                  Share this template
                </button>
                <button 
-                  onClick={handleShareClass}
+                  onClick={handleSaveAdminTemplate}
                   className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold py-1 px-2 rounded flex items-center justify-center gap-1 transition-colors border border-blue-200"
-                  title="Share this class link and lock code"
+                  title="Save current class profile to template library and sync"
                >
-                  <Copy className="w-3 h-3" />
-                  Share this class
+                  <RefreshCw className="w-3 h-3" />
+                  Save as a template
                </button>
             </div>
           )}
@@ -3092,8 +3177,8 @@ export default function App() {
           className={`shadow-sm border overflow-hidden flex flex-col ${isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen" : "rounded-xl flex-1 min-h-[400px]"} ${currentPaper.bgClass} ${currentPaper.borderClass} ${currentPaper.textClass}`}
           style={currentPaper.customStyle}
         >
-          <div className="p-3 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between bg-black/[0.02] shrink-0 gap-3 sm:gap-4">
-            <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto no-scrollbar pb-2 -mb-2 min-w-0 flex-1">
+          <div className="px-3 sm:px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-black/[0.02] shrink-0 gap-3 sm:gap-4 overflow-x-auto custom-scrollbar no-scrollbar-on-mobile">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               <button 
                 onClick={() => setActiveView('grades')}
                 className={`text-base sm:text-lg font-bold flex items-center gap-2 pb-1 transition-colors whitespace-nowrap shrink-0 ${activeView === 'grades' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
