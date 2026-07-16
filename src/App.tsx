@@ -35,7 +35,8 @@ import {
   Eye,
   EyeOff,
   User as UserIcon,
-  BookOpen
+  BookOpen,
+  Database
 } from "lucide-react";
 import {
   Level,
@@ -58,6 +59,7 @@ import { parsePastedClassProfile } from "./lib/parsePaste";
 import { exportToExcelFull } from "./lib/excelExport";
 import { exportToPDFFull } from "./lib/pdfExport";
 import { SYSTEM_TEMPLATES } from "./lib/templates";
+import { exportFullBackup, importFullBackup } from "./lib/backupUtils";
 import { auth, googleProvider, db, isFirebaseConfigured } from "./lib/firebase";
 import { collection, getDocs, addDoc, updateDoc, query, where } from "firebase/firestore";
 import {
@@ -825,6 +827,106 @@ export default function App() {
       console.error("Error syncing admin template:", e);
       alert("Failed to sync template.");
     }
+  };
+
+  const handleDownloadFullBackup = async () => {
+    if (!user) return;
+    
+    const confirmBackup = confirm("This will gather ALL class records, students, and level settings into one file for safe backup. Proceed?");
+    if (!confirmBackup) return;
+
+    try {
+      const backupData: any = {
+        version: "1.0",
+        timestamp: new Date().toISOString(),
+        userId: user.uid,
+        userEmail: user.email || "local",
+        levels: [],
+        classRecords: [],
+        students: {} // recordId -> Student[]
+      };
+
+      // 1. Fetch Levels
+      backupData.levels = levels;
+
+      // 2. Fetch Class Records
+      backupData.classRecords = classRecords;
+
+      // 3. Fetch Students for each class
+      const fetchPromises = classRecords.map(async (record) => {
+        if (!isFirebaseConfigured()) {
+          backupData.students[record.id] = getLocalStudents(user.uid, record.id);
+        } else {
+          try {
+            const q = query(collection(db, "users", user.uid, "classes", record.id, "students"));
+            const snapshot = await getDocs(q);
+            backupData.students[record.id] = snapshot.docs.map(doc => doc.data());
+          } catch (e) {
+            console.warn(`Could not fetch students for class ${record.id}`, e);
+            backupData.students[record.id] = [];
+          }
+        }
+      });
+
+      await Promise.all(fetchPromises);
+
+      // 4. Create and trigger download
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `gradecalc_full_backup_${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      alert("Full Backup downloaded successfully! Store this file in a safe place.");
+    } catch (err) {
+      console.error("Backup failed:", err);
+      alert("Failed to create backup. Check console for details.");
+    }
+  };
+
+  const handleImportBackup = async (file: File) => {
+    if (!user) {
+      alert("Please login first to restore data.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (!data.levels || !data.classRecords || !data.students) {
+          throw new Error("Invalid backup file format. Missing core data structure.");
+        }
+
+        const confirmRestore = confirm(`Import Summary:\n- ${data.classRecords.length} Classes\n- ${data.levels.length} Level Profiles\n\nThis will restore these records to your account. Continue?`);
+        if (!confirmRestore) return;
+
+        // 1. Restore Levels
+        for (const level of data.levels) {
+          await saveLevel(user.uid, level);
+        }
+
+        // 2. Restore Classes and Students
+        for (const record of data.classRecords) {
+          await saveClassRecord(user.uid, record);
+          const classStudents = data.students[record.id] || [];
+          if (classStudents.length > 0) {
+            await saveStudentsBatch(user.uid, record.id, classStudents);
+          }
+        }
+
+        alert("Data successfully restored! The app will reload now.");
+        window.location.reload();
+      } catch (err) {
+        console.error("Import failed:", err);
+        alert("Failed to import backup. Please ensure the file is a valid .json backup from this app.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleShareClass = () => {
@@ -2106,6 +2208,36 @@ export default function App() {
                 Level Config
               </button>
 
+              <div className="flex gap-1">
+                <button
+                  onClick={handleDownloadFullBackup}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 rounded-lg shadow-sm whitespace-nowrap cursor-pointer"
+                  title="Download Full Data Backup (.JSON)"
+                >
+                  <Database className="w-3.5 h-3.5 text-emerald-600" />
+                  Backup
+                </button>
+
+                <label
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors border border-indigo-200 rounded-lg shadow-sm whitespace-nowrap cursor-pointer"
+                  title="Restore from Backup (.JSON)"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-indigo-600" />
+                  Restore
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleImportBackup(e.target.files[0]);
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              </div>
+
               {/* Export Button */}
               <div className="relative">
                 <button
@@ -2298,8 +2430,8 @@ export default function App() {
 
         {/* Class Record Meta Info */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-wrap gap-4 sm:gap-6 items-center shrink-0">
-          <div className="flex-1 min-w-[140px] sm:min-w-[200px]">
-            <label className="block text-xs font-medium text-slate-500 mb-1">
+          <div className="flex-1 min-w-[140px] sm:min-w-[200px] bg-slate-50 p-2 rounded-lg border border-slate-100">
+            <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
               Term / Semester
             </label>
             <input
@@ -2308,12 +2440,12 @@ export default function App() {
               onChange={(e) =>
                 handleUpdateCurrentRecord("termName", e.target.value)
               }
-              className="w-full text-base font-semibold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent px-1 py-0.5 transition-colors"
+              className="w-full text-base font-bold text-slate-900 border-b-2 border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent px-1 py-0.5 transition-colors"
               placeholder="e.g. Term 1, 2024"
             />
           </div>
-          <div className="flex-1 min-w-[140px] sm:min-w-[200px]">
-            <label className="block text-xs font-medium text-slate-500 mb-1">
+          <div className="flex-1 min-w-[140px] sm:min-w-[200px] bg-blue-50/50 p-2 rounded-lg border border-blue-100">
+            <label className="block text-[10px] font-extrabold text-blue-400 uppercase tracking-wider mb-1">
               Class Name
             </label>
             <input
@@ -2322,17 +2454,17 @@ export default function App() {
               onChange={(e) =>
                 handleUpdateCurrentRecord("className", e.target.value)
               }
-              className="w-full text-base font-semibold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent px-1 py-0.5 transition-colors"
+              className="w-full text-base font-bold text-blue-900 border-b-2 border-transparent hover:border-blue-200 focus:border-blue-500 focus:outline-none bg-transparent px-1 py-0.5 transition-colors"
               placeholder="e.g. Morning Class A"
             />
           </div>
-          <div className="flex-1 min-w-[140px] sm:min-w-[200px]">
-            <label className="block text-xs font-medium text-slate-500 mb-1">
+          <div className="flex-1 min-w-[140px] sm:min-w-[200px] bg-emerald-50/50 p-2 rounded-lg border border-emerald-100">
+            <label className="block text-[10px] font-extrabold text-emerald-500 uppercase tracking-wider mb-1">
               Teacher
             </label>
             <div className="flex items-center gap-2 relative">
               <div
-                className={`w-6 h-6 rounded flex shrink-0 items-center justify-center text-xs font-bold ${getTeacherColor(currentRecord.teacherName)}`}
+                className={`w-6 h-6 rounded flex shrink-0 items-center justify-center text-[10px] font-black ${getTeacherColor(currentRecord.teacherName)}`}
               >
                 {getInitials(currentRecord.teacherName)}
               </div>
@@ -2343,7 +2475,7 @@ export default function App() {
                 onChange={(e) =>
                   handleUpdateCurrentRecord("teacherName", e.target.value)
                 }
-                className="w-full text-base font-semibold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent px-1 py-0.5 transition-colors"
+                className="w-full text-base font-bold text-emerald-900 border-b-2 border-transparent hover:border-emerald-200 focus:border-emerald-500 focus:outline-none bg-transparent px-1 py-0.5 transition-colors"
                 placeholder="Teacher Name"
               />
               <datalist id="sample-teachers">
@@ -2390,8 +2522,8 @@ export default function App() {
               />
             </div>
           </div>
-          <div className="flex-1 min-w-[140px] sm:min-w-[200px]">
-            <label className="block text-xs font-medium text-slate-500 mb-1">
+          <div className="flex-1 min-w-[140px] sm:min-w-[200px] bg-indigo-50/50 p-2 rounded-lg border border-indigo-100">
+            <label className="block text-[10px] font-extrabold text-indigo-500 uppercase tracking-wider mb-1">
               Level Profile
             </label>
             <div className="flex items-center gap-1">
@@ -2400,7 +2532,7 @@ export default function App() {
                 onChange={(e) =>
                   handleUpdateCurrentRecord("levelId", e.target.value)
                 }
-                className="w-full text-base font-semibold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent px-1 py-0.5 transition-colors cursor-pointer"
+                className="w-full text-base font-bold text-indigo-900 border-b-2 border-transparent hover:border-indigo-200 focus:border-indigo-500 focus:outline-none bg-transparent px-1 py-0.5 transition-colors cursor-pointer"
               >
                 {(() => {
                   const availableLevels = levels.filter(lvl => 
