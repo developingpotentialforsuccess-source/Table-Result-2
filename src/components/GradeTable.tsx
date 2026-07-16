@@ -855,7 +855,7 @@ export default function GradeTable({
             categoryId: `combined_${subject.id}`,
             subjectId: subject.id,
             itemIndex: -99,
-            label: `${totalComponentsWeight}%`,
+            label: `W ${totalComponentsWeight}%`,
             maxScore: 100,
             isAvg: true,
             subjectIndex,
@@ -1389,11 +1389,8 @@ export default function GradeTable({
                         className="truncate max-w-[150px] uppercase cursor-help group/subject-name relative flex items-center gap-1" 
                         title={sc.subject.name}
                       >
-                        {sc.subject.name}
+                        {sc.subject.name} <span className="text-[10px] text-slate-500 font-bold ml-1">W {getSubjectWeight(sc.subject, resultMode)}%</span>
                         <Search className="w-2.5 h-2.5 text-slate-400 group-hover/subject-name:text-blue-500 transition-colors" />
-                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-slate-800 text-white text-[10px] font-bold rounded opacity-0 group-hover/subject-name:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-xl border border-slate-700">
-                          Weight: {getSubjectWeight(sc.subject, resultMode)}%
-                        </span>
                       </span>
 
                       {!sc.isHidden && resultMode === 'full' && (
@@ -1492,66 +1489,27 @@ export default function GradeTable({
                         )}
                       </button>
                     </div>
-
-                    {!sc.isHidden && resultMode !== 'full' && (
-                      <div className="flex items-center text-[9px] normal-case font-bold text-red-600 bg-red-50/50 px-1 py-0.5 rounded border border-red-200/50 mt-1">
-                        {(() => {
-                          const totalModeTargetWeight = level.subjects.reduce((sum, s) => {
-                            const w = resultMode === 'midterm' 
-                              ? (s.midtermTargetWeight ?? s.targetWeight ?? 100)
-                              : (s.finalTargetWeight ?? s.targetWeight ?? 100);
-                            return sum + w;
-                          }, 0);
-                          const currentSubjectTargetWeight = resultMode === 'midterm'
-                            ? (sc.subject.midtermTargetWeight ?? sc.subject.targetWeight ?? 100)
-                            : resultMode === 'final'
-                              ? (sc.subject.finalTargetWeight ?? sc.subject.targetWeight ?? 100)
-                              : (sc.subject.targetWeight ?? 100);
-
-                          // Logic for "Where do you get this 100%?"
-                          // If there are multiple subjects, we show the relative percentage.
-                          // If there's only one subject, and the user hasn't explicitly set a target weight,
-                          // we might want to show the sum of its category weights if that's what they expect.
-                          const catWeightSum = sc.subject.categories.reduce((sum, c) => {
-                            const cw = resultMode === 'midterm' ? (c.midtermWeight ?? c.weight) : resultMode === 'final' ? (c.finalWeight ?? c.weight) : c.weight;
-                            return sum + (cw || 0);
-                          }, 0);
-
-                          const weightPct = totalModeTargetWeight > 0 
-                            ? Math.round((currentSubjectTargetWeight / totalModeTargetWeight) * 100) 
-                            : 0;
-                          
-                          const displayWeight = currentSubjectTargetWeight;
-
-                          return (
-                            <span className="text-purple-600 font-extrabold mr-1.5 uppercase text-[9px] tracking-tight">
-                              W ({displayWeight}%)
-                            </span>
-                          );
-                        })()}
-                        {settings?.showItemConfig !== false && (
-                          <div className="flex items-center mt-0.5">
-                            <span className="mr-0.5 opacity-70 uppercase text-[8px] tracking-tighter">MAX:</span>
-                            <input
-                              type="number"
-                              min="1"
-                              value={resultMode === 'midterm' ? (sc.subject.midtermMaxScore ?? '') : (sc.subject.finalMaxScore ?? '')}
-                              onChange={(e) => {
-                                if (!onUpdateLevel) return;
-                                const newVal = e.target.value === '' ? undefined : Number(e.target.value);
-                                const newSubjects = level.subjects.map(s => {
-                                  if (s.id !== sc.subject.id) return s;
-                                  return resultMode === 'midterm' 
-                                    ? { ...s, midtermMaxScore: newVal }
-                                    : { ...s, finalMaxScore: newVal };
-                                });
-                                onUpdateLevel({ ...level, subjects: newSubjects });
-                              }}
-                              className="w-8 no-spinners bg-transparent border-b border-red-300 focus:border-red-500 outline-none text-center font-bold text-red-700 text-xs"
-                            />
-                          </div>
-                        )}
-                      </div>
+                    {settings?.showItemConfig !== false && resultMode !== 'full' && (
+                        <div className="flex items-center justify-center mt-1">
+                          <span className="mr-0.5 opacity-70 uppercase text-[8px] tracking-tighter">MAX:</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={resultMode === 'midterm' ? (sc.subject.midtermMaxScore ?? '') : (sc.subject.finalMaxScore ?? '')}
+                            onChange={(e) => {
+                              if (!onUpdateLevel) return;
+                              const newVal = e.target.value === '' ? undefined : Number(e.target.value);
+                              const newSubjects = level.subjects.map(s => {
+                                if (s.id !== sc.subject.id) return s;
+                                return resultMode === 'midterm' 
+                                  ? { ...s, midtermMaxScore: newVal }
+                                  : { ...s, finalMaxScore: newVal };
+                              });
+                              onUpdateLevel({ ...level, subjects: newSubjects });
+                            }}
+                            className="w-8 no-spinners bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none text-center font-bold text-slate-700 text-xs"
+                          />
+                        </div>
                     )}
                   </div>
                 </th>

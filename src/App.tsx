@@ -829,7 +829,7 @@ export default function App() {
     }
   };
 
-  const handleDownloadFullBackup = async () => {
+  const handleDownloadFullBackup = async (timeframe: string = "all") => {
     if (!user) return;
     
     const confirmBackup = confirm("This will gather ALL class records, students, and level settings into one file for safe backup. Proceed?");
@@ -1938,21 +1938,21 @@ export default function App() {
                     {resultMode === 'full' ? 'Full Term' : resultMode === 'midterm' ? 'Mid-Term' : 'Final Exam'}
                   </span>
                 </h1>
-                <div className={`text-xs font-medium flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 ${currentRecord?.settings?.headerBgColor && currentRecord.settings.headerBgColor !== 'transparent' && currentRecord.settings.headerBgColor !== '#ffffff' ? 'text-white/80' : 'text-slate-500'}`}>
-                  <div className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded-md border border-black/5">
-                    <UserIcon className="w-3 h-3" />
-                    <span className="text-[10px] uppercase font-bold tracking-wider">Teacher:</span>
-                    <span className="font-black text-xs uppercase">{currentRecord?.teacherName || "Teacher"}</span>
+                <div className={`text-xs font-medium flex flex-wrap items-center gap-x-3 gap-y-2 mt-2 ${currentRecord?.settings?.headerBgColor && currentRecord.settings.headerBgColor !== 'transparent' && currentRecord.settings.headerBgColor !== '#ffffff' ? 'text-white' : 'text-slate-700'}`}>
+                  <div className="flex items-center gap-1.5 bg-emerald-500 text-white px-2.5 py-1 rounded-lg border border-emerald-600 shadow-sm">
+                    <UserIcon className="w-3.5 h-3.5 opacity-90" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider opacity-90">Teacher:</span>
+                    <span className="font-black text-xs uppercase tracking-wide">{currentRecord?.teacherName || "Teacher"}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded-md border border-black/5">
-                    <BookOpen className="w-3 h-3" />
-                    <span className="text-[10px] uppercase font-bold tracking-wider">Class:</span>
-                    <span className="font-black text-xs uppercase">{currentRecord?.className || "Class Name"}</span>
+                  <div className="flex items-center gap-1.5 bg-blue-500 text-white px-2.5 py-1 rounded-lg border border-blue-600 shadow-sm">
+                    <BookOpen className="w-3.5 h-3.5 opacity-90" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider opacity-90">Class:</span>
+                    <span className="font-black text-xs uppercase tracking-wide">{currentRecord?.className || "Class Name"}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded-md border border-black/5">
-                    <Calendar className="w-3 h-3" />
-                    <span className="text-[10px] uppercase font-bold tracking-wider">Term:</span>
-                    <span className="font-black text-xs uppercase">{currentRecord?.termName || "Term Name"}</span>
+                  <div className="flex items-center gap-1.5 bg-purple-500 text-white px-2.5 py-1 rounded-lg border border-purple-600 shadow-sm">
+                    <Calendar className="w-3.5 h-3.5 opacity-90" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider opacity-90">Term:</span>
+                    <span className="font-black text-xs uppercase tracking-wide">{currentRecord?.termName || "Term Name"}</span>
                   </div>
                 </div>
               </div>
@@ -2209,14 +2209,27 @@ export default function App() {
               </button>
 
               <div className="flex gap-1">
-                <button
-                  onClick={handleDownloadFullBackup}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 rounded-lg shadow-sm whitespace-nowrap cursor-pointer"
-                  title="Download Full Data Backup (.JSON)"
-                >
-                  <Database className="w-3.5 h-3.5 text-emerald-600" />
-                  Backup
-                </button>
+                <div className="relative group/backup">
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 rounded-lg shadow-sm whitespace-nowrap cursor-pointer"
+                  >
+                    <Database className="w-3.5 h-3.5 text-emerald-600" />
+                    Backup
+                    <ChevronDown className="w-3 h-3 opacity-50" />
+                  </button>
+                  <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl opacity-0 invisible group-hover/backup:opacity-100 group-hover/backup:visible transition-all z-50 overflow-hidden">
+                    <div className="p-2 flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1 mb-1">Timeframe</span>
+                      <button onClick={() => handleDownloadFullBackup('1d')} className="px-3 py-2 text-xs font-bold text-left text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors">The last 1 day</button>
+                      <button onClick={() => handleDownloadFullBackup('3d')} className="px-3 py-2 text-xs font-bold text-left text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors">The last 3 days</button>
+                      <button onClick={() => handleDownloadFullBackup('1w')} className="px-3 py-2 text-xs font-bold text-left text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors">The last 1 week</button>
+                      <button onClick={() => handleDownloadFullBackup('1m')} className="px-3 py-2 text-xs font-bold text-left text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors">The last 1 month</button>
+                      <button onClick={() => handleDownloadFullBackup('3m')} className="px-3 py-2 text-xs font-bold text-left text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors">The last 3 months</button>
+                      <button onClick={() => handleDownloadFullBackup('6m')} className="px-3 py-2 text-xs font-bold text-left text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors">The last 6 months</button>
+                      <button onClick={() => handleDownloadFullBackup('all')} className="px-3 py-2 text-xs font-bold text-left text-emerald-700 bg-emerald-50 rounded-lg transition-colors mt-1">All Time (Full Backup)</button>
+                    </div>
+                  </div>
+                </div>
 
                 <label
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors border border-indigo-200 rounded-lg shadow-sm whitespace-nowrap cursor-pointer"
@@ -3347,31 +3360,6 @@ export default function App() {
                  </div>
               </div>
 
-              {/* Compact View Toggle */}
-              <button
-                onClick={() => handleUpdateSettings({
-                  ...currentRecord!.settings!,
-                  showScoreColumns: !currentRecord!.settings!.showScoreColumns
-                })}
-                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm shrink-0 ${
-                  currentRecord?.settings?.showScoreColumns 
-                    ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-50" 
-                    : "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
-                }`}
-                title={currentRecord?.settings?.showScoreColumns ? "Switch to Compact View (Hide item columns)" : "Switch to Detailed View (Show item columns)"}
-              >
-                {currentRecord?.settings?.showScoreColumns ? (
-                  <>
-                    <Minimize className="w-3.5 h-3.5" />
-                    Compact View
-                  </>
-                ) : (
-                  <>
-                    <Maximize className="w-3.5 h-3.5" />
-                    Detailed View
-                  </>
-                )}
-              </button>
 
               {/* View Settings Menu */}
               <div className="relative group/view-settings shrink-0">
@@ -3488,8 +3476,33 @@ export default function App() {
                   <option value="final" className="text-slate-700 bg-white">Final Test</option>
                 </select>
               </div>
-            </div>
 
+              {/* Compact View Toggle */}
+              <button
+                onClick={() => handleUpdateSettings({
+                  ...currentRecord!.settings!,
+                  showScoreColumns: !currentRecord!.settings!.showScoreColumns
+                })}
+                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm shrink-0 ${
+                  currentRecord?.settings?.showScoreColumns 
+                    ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-50" 
+                    : "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
+                }`}
+                title={currentRecord?.settings?.showScoreColumns ? "Switch to Compact View (Hide item columns)" : "Switch to Detailed View (Show item columns)"}
+              >
+                {currentRecord?.settings?.showScoreColumns ? (
+                  <>
+                    <Minimize className="w-3.5 h-3.5" />
+                    Compact View
+                  </>
+                ) : (
+                  <>
+                    <Maximize className="w-3.5 h-3.5" />
+                    Detailed View
+                  </>
+                )}
+              </button>
+            </div>
               {/* Repositioned Search Input */}
               <div className="flex items-center bg-white/50 border border-slate-200 rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all shrink-0 min-w-[180px] sm:min-w-[240px] ml-0 sm:ml-4">
                 <Search className="w-4 h-4 text-slate-400 shrink-0" />
