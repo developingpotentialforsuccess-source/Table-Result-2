@@ -36,6 +36,8 @@ import {
   EyeOff,
   User as UserIcon,
   BookOpen,
+  AlertTriangle,
+  Info,
   Database
 } from "lucide-react";
 import {
@@ -832,7 +834,7 @@ export default function App() {
   const handleDownloadFullBackup = async (timeframe: string = "all") => {
     if (!user) return;
     
-    const confirmBackup = confirm("This will gather ALL class records, students, and level settings into one file for safe backup. Proceed?");
+    const confirmBackup = confirm(`This will gather ${timeframe === 'all' ? 'ALL' : 'the recent'} class records, students, and level settings into one file for safe backup. Proceed?`);
     if (!confirmBackup) return;
 
     try {
@@ -850,10 +852,28 @@ export default function App() {
       backupData.levels = levels;
 
       // 2. Fetch Class Records
-      backupData.classRecords = classRecords;
+      let filteredRecords = classRecords;
+      if (timeframe !== 'all') {
+        const now = Date.now();
+        const limits: Record<string, number> = {
+          '1d': 24 * 60 * 60 * 1000,
+          '3d': 3 * 24 * 60 * 60 * 1000,
+          '1w': 7 * 24 * 60 * 60 * 1000,
+          '1m': 30 * 24 * 60 * 60 * 1000,
+          '3m': 90 * 24 * 60 * 60 * 1000,
+          '6m': 180 * 24 * 60 * 60 * 1000,
+        };
+        const limit = limits[timeframe] || 0;
+        
+        filteredRecords = classRecords.filter(r => {
+           const time = new Date(r.updatedAt || r.createdAt || Date.now()).getTime();
+           return (now - time) <= limit;
+        });
+      }
+      backupData.classRecords = filteredRecords;
 
       // 3. Fetch Students for each class
-      const fetchPromises = classRecords.map(async (record) => {
+      const fetchPromises = filteredRecords.map(async (record) => {
         if (!isFirebaseConfigured()) {
           backupData.students[record.id] = getLocalStudents(user.uid, record.id);
         } else {
@@ -1954,6 +1974,20 @@ export default function App() {
                     <span className="text-[10px] uppercase font-bold tracking-wider opacity-90">Term:</span>
                     <span className="font-black text-xs uppercase tracking-wide">{currentRecord?.termName || "Term Name"}</span>
                   </div>
+                  {totalWeight !== 100 && totalWeight > 0 && (
+                    <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-2.5 py-1 rounded-lg border border-amber-300 shadow-sm ml-auto">
+                      <AlertTriangle className="w-3.5 h-3.5 opacity-90 text-amber-600" />
+                      <span className="text-[10px] uppercase font-bold tracking-wider opacity-90">Warning:</span>
+                      <span className="font-black text-xs uppercase tracking-wide">Level total weight is {totalWeight}%</span>
+                    </div>
+                  )}
+                  {totalWeight === 0 && (
+                    <div className="flex items-center gap-1.5 bg-blue-100 text-blue-800 px-2.5 py-1 rounded-lg border border-blue-300 shadow-sm ml-auto">
+                      <Info className="w-3.5 h-3.5 opacity-90 text-blue-600" />
+                      <span className="text-[10px] uppercase font-bold tracking-wider opacity-90">Info:</span>
+                      <span className="font-black text-xs uppercase tracking-wide">Configure subjects in Level Config</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -3361,6 +3395,44 @@ export default function App() {
               </div>
 
 
+              {/* Result Column Display - Desktop */}
+              <div className="hidden lg:flex items-center border border-slate-200 rounded-lg px-2 bg-white shadow-sm shrink-0">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mr-2 border-r border-slate-100 pr-2 py-1">Result Col</span>
+                <select 
+                  value={currentRecord?.settings?.resultDisplayMode || 'both'}
+                  onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, resultDisplayMode: e.target.value as 'both'|'avg'|'wtd'})}
+                  className="bg-transparent text-xs font-bold text-slate-600 outline-none cursor-pointer py-1"
+                  title="Result Column Display"
+                >
+                  <option value="both">Both (Wtd & Avg)</option>
+                  <option value="wtd">Weight Only</option>
+                  <option value="avg">Average Only</option>
+                </select>
+              </div>
+
+              {/* Repositioned Mode Select - Desktop */}
+              <div className={`hidden sm:flex items-center border rounded-lg px-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shrink-0 ${
+                resultMode === 'full' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                resultMode === 'midterm' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                'bg-rose-50 border-rose-200 text-rose-800'
+              }`}>
+                <span className={`text-[10px] font-black uppercase tracking-widest mr-2 border-r pr-2 py-1 ${
+                  resultMode === 'full' ? 'text-emerald-500 border-emerald-200' :
+                  resultMode === 'midterm' ? 'text-amber-500 border-amber-200' :
+                  'text-rose-500 border-rose-200'
+                }`}>Mode</span>
+                <select
+                  value={resultMode}
+                  onChange={(e) => handleUpdateResultMode(e.target.value as "full" | "midterm" | "final")}
+                  className="bg-transparent text-sm font-bold outline-none cursor-pointer py-1 text-inherit"
+                  title="Choose grading period view and export mode"
+                >
+                  <option value="full" className="text-slate-700 bg-white">Termly Result</option>
+                  <option value="midterm" className="text-slate-700 bg-white">Mid-term Test</option>
+                  <option value="final" className="text-slate-700 bg-white">Final Test</option>
+                </select>
+              </div>
+
               {/* View Settings Menu */}
               <div className="relative group/view-settings shrink-0">
                 <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 bg-white hover:bg-slate-50 transition-all shadow-sm">
@@ -3439,44 +3511,6 @@ export default function App() {
                   </div>
                 </div>
 
-              {/* Result Column Display - Desktop */}
-              <div className="hidden lg:flex items-center border border-slate-200 rounded-lg px-2 bg-white shadow-sm shrink-0">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mr-2 border-r border-slate-100 pr-2 py-1">Result Col</span>
-                <select 
-                  value={currentRecord?.settings?.resultDisplayMode || 'both'}
-                  onChange={(e) => handleUpdateSettings({...currentRecord!.settings!, resultDisplayMode: e.target.value as 'both'|'avg'|'wtd'})}
-                  className="bg-transparent text-xs font-bold text-slate-600 outline-none cursor-pointer py-1"
-                  title="Result Column Display"
-                >
-                  <option value="both">Both (Wtd & Avg)</option>
-                  <option value="wtd">Weight Only</option>
-                  <option value="avg">Average Only</option>
-                </select>
-              </div>
-
-              {/* Repositioned Mode Select - Desktop */}
-              <div className={`hidden sm:flex items-center border rounded-lg px-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shrink-0 ${
-                resultMode === 'full' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
-                resultMode === 'midterm' ? 'bg-amber-50 border-amber-200 text-amber-800' :
-                'bg-rose-50 border-rose-200 text-rose-800'
-              }`}>
-                <span className={`text-[10px] font-black uppercase tracking-widest mr-2 border-r pr-2 py-1 ${
-                  resultMode === 'full' ? 'text-emerald-500 border-emerald-200' :
-                  resultMode === 'midterm' ? 'text-amber-500 border-amber-200' :
-                  'text-rose-500 border-rose-200'
-                }`}>Mode</span>
-                <select
-                  value={resultMode}
-                  onChange={(e) => handleUpdateResultMode(e.target.value as "full" | "midterm" | "final")}
-                  className="bg-transparent text-sm font-bold outline-none cursor-pointer py-1 text-inherit"
-                  title="Choose grading period view and export mode"
-                >
-                  <option value="full" className="text-slate-700 bg-white">Termly Result</option>
-                  <option value="midterm" className="text-slate-700 bg-white">Mid-term Test</option>
-                  <option value="final" className="text-slate-700 bg-white">Final Test</option>
-                </select>
-              </div>
-
               {/* Compact View Toggle */}
               <button
                 onClick={() => handleUpdateSettings({
@@ -3521,16 +3555,6 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {totalWeight !== 100 && totalWeight > 0 && (
-                <span className="text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 hidden md:inline-block">
-                  Warning: Level total weight is {totalWeight}%
-                </span>
-              )}
-              {totalWeight === 0 && (
-                <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 hidden md:inline-block">
-                  Configure subjects in Level Config
-                </span>
-              )}
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded shadow-sm transition-colors border border-slate-200"
